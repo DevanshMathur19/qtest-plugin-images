@@ -1,0 +1,220 @@
+pipeline:
+  name: qTest Publisher - Secure Promotion
+  identifier: qtest_publisher_secure_promote
+  projectIdentifier: Drone_Plugins
+  orgIdentifier: default
+  properties:
+    ci:
+      codebase:
+        repoName: qtest-plugin-images
+        build: <+input>
+  variables:
+    - {name: dockerConnector, type: String, value: dmdockerconn}
+    - {name: dockerUsername, type: String, value: <+input>}
+    - {name: dockerPassword, type: Secret, value: <+input>}
+    - {name: cosignPrivateKey, type: Secret, value: <+input>}
+    - {name: cosignPassword, type: Secret, value: <+input>}
+    - {name: qualificationEvidence, type: String, value: <+input>}
+  stages:
+    - stage:
+        name: Verify release gates
+        identifier: verify_release_gates
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform: {os: Linux, arch: Amd64}
+          runtime: {type: Cloud, spec: {}}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Validate qualified digest lock
+                  identifier: validate_qualified_digest_lock
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: python:3.13.7-alpine
+                    shell: Sh
+                    envVariables:
+                      QUALIFICATION_EVIDENCE: <+pipeline.variables.qualificationEvidence>
+                    command: |
+                      set -eu
+                      case "$QUALIFICATION_EVIDENCE" in
+                        https://app.harness.io/*|harness://execution/*) ;;
+                        *) echo "successful qualification evidence is required" >&2; exit 1 ;;
+                      esac
+                      python3 scripts/release.py validate
+                      python3 - <<'PY'
+                      import sys
+                      sys.path.insert(0, "scripts")
+                      import release
+                      cat = release.catalog()
+                      lock = release.validate_child_lock(cat)
+                      for platform, child in lock["children"].items():
+                          if not child.get("published") or not child.get("qualified"):
+                              raise SystemExit(f"unqualified child: {platform}")
+                      PY
+    - stage:
+        name: Scan candidate images
+        identifier: scan_candidate_images
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform: {os: Linux, arch: Amd64}
+          runtime: {type: Cloud, spec: {}}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Vulnerability and license gates
+                  identifier: vulnerability_license_gates
+                  timeout: 60m
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: python:3.13.7-alpine
+                    shell: Sh
+                    command: |
+                      set -eu
+                      apk add --no-cache ca-certificates wget tar
+                      version=v0.67.2
+                      archive=trivy_0.67.2_Linux-64bit.tar.gz
+                      wget -q "https://github.com/aquasecurity/trivy/releases/download/${version}/${archive}"
+                      wget -q "https://github.com/aquasecurity/trivy/releases/download/${version}/trivy_${version#v}_checksums.txt"
+                      grep " ${archive}$" "trivy_${version#v}_checksums.txt" | sha256sum -c -
+                      tar xzf "$archive" trivy
+                      install trivy /usr/local/bin/trivy
+                      python3 - <<'PY' >/tmp/candidates
+                      import json
+                      lock = json.load(open("locks/platform-child-digests.json"))
+                      for child in lock["children"].values():
+                          print(f"docker.io/{lock['repository']}@{child['digest']}")
+                      PY
+                      while IFS= read -r image; do
+                        trivy image --exit-code 1 --severity HIGH,CRITICAL \
+                          --ignore-unfixed --scanners vuln "$image"
+                        trivy image --exit-code 1 --scanners license \
+                          --license-full "$image"
+                      done </tmp/candidates
+    - stage:
+        name: Promote by digest and attest
+        identifier: promote_by_digest_and_attest
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform: {os: Linux, arch: Amd64}
+          runtime: {type: Cloud, spec: {}}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Copy immutable children and complete index
+                  identifier: copy_children_complete_index
+                  timeout: 60m
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: python:3.13.7-alpine
+                    shell: Sh
+                    envVariables:
+                      DOCKER_USERNAME: <+pipeline.variables.dockerUsername>
+                      DOCKER_PASSWORD: <+pipeline.variables.dockerPassword>
+                    command: |
+                      set -eu
+                      apk add --no-cache ca-certificates wget tar
+                      version=v0.20.6
+                      archive=go-containerregistry_Linux_x86_64.tar.gz
+                      wget -q "https://github.com/google/go-containerregistry/releases/download/${version}/${archive}"
+                      wget -q "https://github.com/google/go-containerregistry/releases/download/${version}/checksums.txt"
+                      grep " ${archive}$" checksums.txt | sha256sum -c -
+                      tar xzf "$archive" crane
+                      install crane /usr/local/bin/crane
+                      crane auth login index.docker.io -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
+                      python3 - <<'PY' >/tmp/promotions.tsv
+                      import sys
+                      sys.path.insert(0, "scripts")
+                      import release
+                      cat = release.catalog()
+                      lock = release.validate_child_lock(cat)
+                      for platform, child in lock["children"].items():
+                          if not child.get("qualified"):
+                              raise SystemExit(f"unqualified child: {platform}")
+                          print("\t".join([
+                              platform, cat["repository"], child["digest"],
+                              cat["production_repository"], child["tag"],
+                              release.moving_tag(cat, platform),
+                          ]))
+                      PY
+                      : >/tmp/children
+                      while IFS="$(printf '\t')" read -r platform source_repo digest destination_repo immutable moving; do
+                        source="docker.io/${source_repo}@${digest}"
+                        immutable_ref="docker.io/${destination_repo}:${immutable}"
+                        existing=$(crane digest "$immutable_ref" 2>/dev/null || true)
+                        if [ -n "$existing" ] && [ "$existing" != "$digest" ]; then
+                          echo "refusing to overwrite immutable tag $immutable_ref" >&2
+                          exit 1
+                        fi
+                        [ -n "$existing" ] || crane copy "$source" "$immutable_ref"
+                        [ "$(crane digest "$immutable_ref")" = "$digest" ]
+                        crane copy "$source" "docker.io/${destination_repo}:${moving}"
+                        [ "$(crane digest "docker.io/${destination_repo}:${moving}")" = "$digest" ]
+                        printf '%s\n' "$immutable_ref" >>/tmp/children
+                      done </tmp/promotions.tsv
+                      set -- $(sed 's/^/-m /' /tmp/children)
+                      index_ref=docker.io/harness/qtest-publisher:1.0.0
+                      crane index append "$@" -t "$index_ref"
+                      crane manifest "$index_ref" >/tmp/index.json
+                      python3 scripts/validate_manifest.py /tmp/index.json locks/platform-child-digests.json
+                      manifestDigest=$(crane digest "$index_ref")
+                      test -n "$manifestDigest"
+                      export manifestDigest
+                    outputVariables:
+                      - {name: manifestDigest, type: String, value: manifestDigest}
+              - step:
+                  type: Run
+                  name: Generate SBOMs and sign provenance
+                  identifier: generate_sboms_sign_provenance
+                  timeout: 60m
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: python:3.13.7-alpine
+                    shell: Sh
+                    envVariables:
+                      COSIGN_PRIVATE_KEY: <+pipeline.variables.cosignPrivateKey>
+                      COSIGN_PASSWORD: <+pipeline.variables.cosignPassword>
+                    command: |
+                      set -eu
+                      apk add --no-cache ca-certificates curl jq
+                      install_tool() {
+                        project=$1 version=$2 archive=$3 binary=$4
+                        base="https://github.com/${project}/releases/download/${version}"
+                        curl -fsSLO "${base}/${archive}"
+                        curl -fsSLO "${base}/checksums.txt"
+                        grep " ${archive}$" checksums.txt | sha256sum -c -
+                        tar xzf "$archive" "$binary"
+                        install "$binary" "/usr/local/bin/$binary"
+                        rm -f "$archive" checksums.txt "$binary"
+                      }
+                      install_tool anchore/syft v1.33.0 syft_1.33.0_linux_amd64.tar.gz syft
+                      curl -fsSLo cosign https://github.com/sigstore/cosign/releases/download/v2.6.0/cosign-linux-amd64
+                      curl -fsSLo cosign_checksums.txt https://github.com/sigstore/cosign/releases/download/v2.6.0/cosign_checksums.txt
+                      grep ' cosign-linux-amd64$' cosign_checksums.txt | sha256sum -c -
+                      install cosign /usr/local/bin/cosign
+                      printf '%s' "$COSIGN_PRIVATE_KEY" >/tmp/cosign.key
+                      chmod 600 /tmp/cosign.key
+                      mkdir -p evidence/release/sbom
+                      python3 - <<'PY' >/tmp/production-refs
+                      import sys
+                      sys.path.insert(0, "scripts")
+                      import release
+                      cat = release.catalog()
+                      lock = release.validate_child_lock(cat)
+                      for platform, child in lock["children"].items():
+                          print(f"{platform}\tdocker.io/{cat['production_repository']}@{child['digest']}")
+                      PY
+                      while IFS="$(printf '\t')" read -r platform image; do
+                        syft "$image" -o spdx-json="evidence/release/sbom/${platform}.spdx.json"
+                        cosign sign --yes --key /tmp/cosign.key "$image"
+                        cosign attest --yes --key /tmp/cosign.key \
+                          --type spdxjson --predicate "evidence/release/sbom/${platform}.spdx.json" "$image"
+                      done </tmp/production-refs
+                      index="docker.io/harness/qtest-publisher@<+execution.steps.copy_children_complete_index.output.outputVariables.manifestDigest>"
+                      cosign sign --yes --key /tmp/cosign.key "$index"
+                      rm -f /tmp/cosign.key

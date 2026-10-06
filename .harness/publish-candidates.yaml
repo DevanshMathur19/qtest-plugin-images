@@ -1,0 +1,263 @@
+pipeline:
+  name: qTest Publisher - Publish Platform Candidates
+  identifier: qtest_publisher_publish_candidates
+  projectIdentifier: Drone_Plugins
+  orgIdentifier: default
+  properties:
+    ci:
+      codebase:
+        repoName: qtest-publisher
+        build: <+input>
+  variables:
+    - {name: dockerConnector, type: String, value: dmdockerconn}
+    - {name: windows2019BuilderPool, type: String, value: windows-2019}
+    - {name: windows2022BuilderPool, type: String, value: windows-2022}
+    - {name: windows2025BuilderPool, type: String, value: windows-2025}
+    - {name: goWindowsUrl, type: String, value: "https://go.dev/dl/go1.25.13.windows-amd64.zip"}
+    - {name: goWindowsSha256, type: String, value: "54a6bbffada82938ac4ae66e354b2e9c04ebdceff96f8d0455406c723b5ed1fc"}
+  stages:
+    - stage:
+        name: Validate source
+        identifier: validate_source
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform: {os: Linux, arch: Amd64}
+          runtime: {type: Cloud, spec: {}}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Unit race vet and cross-build
+                  identifier: unit_race_vet_cross_build
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: docker.io/library/golang:1.25.13-alpine@sha256:fec9672136e7ccfa4f6cf59177987de3d8ee9b14953b6ea5485dbd08bf7b4aed
+                    shell: Sh
+                    command: |
+                      set -eu
+                      apk add --no-cache build-base
+                      git cat-file -e 816464df142eec022158fe7685772d8eabd65b82^{commit}
+                      git diff --exit-code 816464df142eec022158fe7685772d8eabd65b82 -- go.mod main.go plugin
+                      test "$(go env GOVERSION)" = go1.25.13
+                      go test ./...
+                      go test -race ./...
+                      go vet ./...
+                      go run honnef.co/go/tools/cmd/staticcheck@v0.6.1 ./...
+                      go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+                      test -z "$(go list -deps -f '{{if and (not .Standard) (ne .Module.Path "github.com/harness-community/qtest-publisher")}}{{.ImportPath}}{{end}}' ./...)"
+                      for target in linux/amd64 linux/arm64 windows/amd64; do
+                        GOOS=${target%/*} GOARCH=${target#*/} CGO_ENABLED=0 go build -trimpath ./...
+                      done
+              - step:
+                  type: Run
+                  name: Secret scan
+                  identifier: secret_scan
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: zricethezav/gitleaks:v8.28.0
+                    shell: Sh
+                    command: gitleaks detect --source . --no-git --redact
+    - parallel:
+        - stage:
+            name: Publish Linux AMD64
+            identifier: publish_linux_amd64
+            type: CI
+            spec:
+              cloneCodebase: true
+              slsa_provenance: {enabled: true}
+              platform: {os: Linux, arch: Amd64}
+              runtime: {type: Cloud, spec: {}}
+              execution:
+                steps:
+                  - step:
+                      type: Run
+                      name: Build static binary
+                      identifier: build_static_binary
+                      spec:
+                        connectorRef: account.harnessImage
+                        image: docker.io/library/golang:1.25.13-alpine@sha256:fec9672136e7ccfa4f6cf59177987de3d8ee9b14953b6ea5485dbd08bf7b4aed
+                        shell: Sh
+                        command: |
+                          set -eu
+                          mkdir -p release/linux/amd64
+                          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
+                            -ldflags="-s -w -X main.version=1.0.0+<+codebase.shortCommitSha>" \
+                            -o release/linux/amd64/qtest-publisher .
+                  - step:
+                      type: BuildAndPushDockerRegistry
+                      name: Publish immutable child
+                      identifier: publish_immutable_child
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        repo: devanshmathur19/qtest-publisher
+                        tags: [1.0.0-linux-amd64-r1]
+                        dockerfile: docker/Dockerfile.linux.amd64
+                        context: .
+        - stage:
+            name: Publish Linux ARM64
+            identifier: publish_linux_arm64
+            type: CI
+            spec:
+              cloneCodebase: true
+              slsa_provenance: {enabled: true}
+              platform: {os: Linux, arch: Arm64}
+              runtime: {type: Cloud, spec: {}}
+              execution:
+                steps:
+                  - step:
+                      type: Run
+                      name: Build static binary
+                      identifier: build_static_binary
+                      spec:
+                        connectorRef: account.harnessImage
+                        image: docker.io/library/golang:1.25.13-alpine@sha256:0ae9afcc66ea58a852d29541782ad911f6151e073355e8eb0f10f91f6d97869f
+                        shell: Sh
+                        command: |
+                          set -eu
+                          mkdir -p release/linux/arm64
+                          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath \
+                            -ldflags="-s -w -X main.version=1.0.0+<+codebase.shortCommitSha>" \
+                            -o release/linux/arm64/qtest-publisher .
+                  - step:
+                      type: BuildAndPushDockerRegistry
+                      name: Publish immutable child
+                      identifier: publish_immutable_child
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        repo: devanshmathur19/qtest-publisher
+                        tags: [1.0.0-linux-arm64-r1]
+                        dockerfile: docker/Dockerfile.linux.arm64
+                        context: .
+        - stage:
+            name: Publish Windows LTSC 2019
+            identifier: publish_windows_ltsc2019
+            type: CI
+            spec:
+              cloneCodebase: true
+              slsa_provenance: {enabled: true}
+              platform: {os: Windows, arch: Amd64}
+              infrastructure:
+                type: VM
+                spec:
+                  type: Pool
+                  spec:
+                    poolName: <+pipeline.variables.windows2019BuilderPool>
+                    os: Windows
+              execution:
+                steps:
+                  - step:
+                      type: Run
+                      name: Build verified static binary
+                      identifier: build_verified_static_binary
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: mcr.microsoft.com/windows/servercore@sha256:bea74690d808bba3e6b0d4ba4c599305aea1f66c875f133f1e75855841dcb1d5
+                        shell: PowerShell
+                        command: |
+                          $ErrorActionPreference = 'Stop'
+                          Invoke-WebRequest -UseBasicParsing -Uri '<+pipeline.variables.goWindowsUrl>' -OutFile go.zip
+                          if ((Get-FileHash -Algorithm SHA256 go.zip).Hash.ToLowerInvariant() -ne '<+pipeline.variables.goWindowsSha256>') { throw 'Go SDK SHA-256 mismatch' }
+                          Expand-Archive go.zip -DestinationPath C:\tools -Force
+                          New-Item -ItemType Directory -Force release\windows\amd64 | Out-Null
+                          $env:CGO_ENABLED='0'; $env:GOOS='windows'; $env:GOARCH='amd64'
+                          & C:\tools\go\bin\go.exe build -trimpath -ldflags '-s -w -X main.version=1.0.0+<+codebase.shortCommitSha>' -o release\windows\amd64\qtest-publisher.exe .
+                  - step:
+                      type: BuildAndPushDockerRegistry
+                      name: Publish immutable child
+                      identifier: publish_immutable_child
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        repo: devanshmathur19/qtest-publisher
+                        tags: [1.0.0-windows-ltsc2019-amd64-r1]
+                        dockerfile: docker/Dockerfile.windows.amd64.ltsc2019
+                        context: .
+              delegateSelectors: [windows-vm]
+        - stage:
+            name: Publish Windows LTSC 2022
+            identifier: publish_windows_ltsc2022
+            type: CI
+            spec:
+              cloneCodebase: true
+              slsa_provenance: {enabled: true}
+              platform: {os: Windows, arch: Amd64}
+              infrastructure:
+                type: VM
+                spec:
+                  type: Pool
+                  spec:
+                    poolName: <+pipeline.variables.windows2022BuilderPool>
+                    os: Windows
+              execution:
+                steps:
+                  - step:
+                      type: Run
+                      name: Build verified static binary
+                      identifier: build_verified_static_binary
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: mcr.microsoft.com/windows/servercore@sha256:e10503b9a4f7faafa30aa0f5d0e8e7f7ca30a4496b3b87d61178b4d7c6815fb5
+                        shell: PowerShell
+                        command: |
+                          $ErrorActionPreference = 'Stop'
+                          Invoke-WebRequest -UseBasicParsing -Uri '<+pipeline.variables.goWindowsUrl>' -OutFile go.zip
+                          if ((Get-FileHash -Algorithm SHA256 go.zip).Hash.ToLowerInvariant() -ne '<+pipeline.variables.goWindowsSha256>') { throw 'Go SDK SHA-256 mismatch' }
+                          Expand-Archive go.zip -DestinationPath C:\tools -Force
+                          New-Item -ItemType Directory -Force release\windows\amd64 | Out-Null
+                          $env:CGO_ENABLED='0'; $env:GOOS='windows'; $env:GOARCH='amd64'
+                          & C:\tools\go\bin\go.exe build -trimpath -ldflags '-s -w -X main.version=1.0.0+<+codebase.shortCommitSha>' -o release\windows\amd64\qtest-publisher.exe .
+                  - step:
+                      type: BuildAndPushDockerRegistry
+                      name: Publish immutable child
+                      identifier: publish_immutable_child
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        repo: devanshmathur19/qtest-publisher
+                        tags: [1.0.0-windows-ltsc2022-amd64-r1]
+                        dockerfile: docker/Dockerfile.windows.amd64.ltsc2022
+                        context: .
+              delegateSelectors: [windows-vm]
+        - stage:
+            name: Publish Windows LTSC 2025
+            identifier: publish_windows_ltsc2025
+            type: CI
+            spec:
+              cloneCodebase: true
+              slsa_provenance: {enabled: true}
+              platform: {os: Windows, arch: Amd64}
+              infrastructure:
+                type: VM
+                spec:
+                  type: Pool
+                  spec:
+                    poolName: <+pipeline.variables.windows2025BuilderPool>
+                    os: Windows
+              execution:
+                steps:
+                  - step:
+                      type: Run
+                      name: Build verified static binary
+                      identifier: build_verified_static_binary
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: mcr.microsoft.com/windows/servercore@sha256:22505496dd4229dba63453ba0c6dc31c06fd3e11810e5b8e429aa6b16dab2457
+                        shell: PowerShell
+                        command: |
+                          $ErrorActionPreference = 'Stop'
+                          Invoke-WebRequest -UseBasicParsing -Uri '<+pipeline.variables.goWindowsUrl>' -OutFile go.zip
+                          if ((Get-FileHash -Algorithm SHA256 go.zip).Hash.ToLowerInvariant() -ne '<+pipeline.variables.goWindowsSha256>') { throw 'Go SDK SHA-256 mismatch' }
+                          Expand-Archive go.zip -DestinationPath C:\tools -Force
+                          New-Item -ItemType Directory -Force release\windows\amd64 | Out-Null
+                          $env:CGO_ENABLED='0'; $env:GOOS='windows'; $env:GOARCH='amd64'
+                          & C:\tools\go\bin\go.exe build -trimpath -ldflags '-s -w -X main.version=1.0.0+<+codebase.shortCommitSha>' -o release\windows\amd64\qtest-publisher.exe .
+                  - step:
+                      type: BuildAndPushDockerRegistry
+                      name: Publish immutable child
+                      identifier: publish_immutable_child
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        repo: devanshmathur19/qtest-publisher
+                        tags: [1.0.0-windows-ltsc2025-amd64-r1]
+                        dockerfile: docker/Dockerfile.windows.amd64.ltsc2025
+                        context: .
+              delegateSelectors: [windows-vm]

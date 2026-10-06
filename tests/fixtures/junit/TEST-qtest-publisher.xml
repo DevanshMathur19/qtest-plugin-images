@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="publisher.contract" tests="4" failures="1" errors="1" skipped="1" time="0.4" timestamp="2026-10-06T00:00:00Z">
+  <testcase classname="io.harness.qtest.PublisherContract" name="publishes passed results" time="0.1"/>
+  <testcase classname="io.harness.qtest.PublisherContract" name="publishes failures" time="0.1">
+    <failure message="expected failure">assertion details</failure>
+  </testcase>
+  <testcase classname="io.harness.qtest.PublisherContract" name="publishes errors" time="0.1">
+    <error message="expected error">exception details</error>
+  </testcase>
+  <testcase classname="io.harness.qtest.PublisherContract" name="publishes skipped results" time="0.1">
+    <skipped message="expected skip"/>
+  </testcase>
+  <system-out>qTest publisher contract stdout</system-out>
+  <system-err>qTest publisher contract stderr</system-err>
+</testsuite>

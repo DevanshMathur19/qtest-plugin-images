@@ -1,0 +1,340 @@
+pipeline:
+  name: qTest Publisher - KubernetesDirect Qualification
+  identifier: qtest_publisher_qualify_kubernetes
+  projectIdentifier: Drone_Plugins
+  orgIdentifier: default
+  properties:
+    ci:
+      codebase:
+        repoName: qtest-plugin-images
+        build: <+input>
+  variables:
+    - {name: dockerConnector, type: String, value: dmdockerconn}
+    - {name: linuxKubernetesConnector, type: String, value: <+input>}
+    - {name: namespace, type: String, value: cie-test}
+    - {name: linuxAmd64Candidate, type: String, value: <+input>}
+    - {name: linuxArm64Candidate, type: String, value: <+input>}
+    - {name: windows2019Candidate, type: String, value: <+input>}
+    - {name: windows2022Candidate, type: String, value: <+input>}
+    - {name: windows2025Candidate, type: String, value: <+input>}
+    - {name: qtestUrl, type: String, value: <+input>}
+    - {name: qtestToken, type: Secret, value: <+input>}
+    - {name: qtestProjectId, type: String, value: <+input>}
+    - {name: qtestCycleId, type: String, value: <+input>}
+  stages:
+    - parallel:
+        - stage:
+            name: Qualify Linux AMD64
+            identifier: qualify_linux_amd64
+            type: CI
+            spec:
+              cloneCodebase: true
+              platform: {os: Linux, arch: Amd64}
+              infrastructure:
+                type: KubernetesDirect
+                spec:
+                  connectorRef: <+pipeline.variables.linuxKubernetesConnector>
+                  namespace: <+pipeline.variables.namespace>
+                  automountServiceAccountToken: true
+                  serviceAccountName: ci-image-e2e-reader
+                  nodeSelector: {kubernetes.io/arch: amd64}
+              execution:
+                steps:
+                  - step:
+                      type: Plugin
+                      name: Empty result contract
+                      identifier: empty_result_contract
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.linuxAmd64Candidate>
+                        settings:
+                          qtest_url: https://unused.qtestnet.com
+                          bearer_token: not-used-for-empty-result
+                          project_id: "1"
+                          destination_type: test-cycle
+                          destination_id: "1"
+                          result_paths: no-results/**/*.xml
+                          empty_result: warn
+                  - step:
+                      type: Plugin
+                      name: Publish sandbox JUnit
+                      identifier: publish_sandbox_junit
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.linuxAmd64Candidate>
+                        settings:
+                          qtest_url: <+pipeline.variables.qtestUrl>
+                          bearer_token: <+pipeline.variables.qtestToken>
+                          project_id: <+pipeline.variables.qtestProjectId>
+                          destination_type: test-cycle
+                          destination_id: <+pipeline.variables.qtestCycleId>
+                          result_paths: tests/fixtures/junit/*.xml
+                          identity_mode: method
+                  - step:
+                      type: Run
+                      name: Assert running image digest
+                      identifier: assert_running_image_digest
+                      spec:
+                        connectorRef: account.harnessImage
+                        image: python:3.13.7-alpine
+                        shell: Sh
+                        envVariables:
+                          CANDIDATE_IMAGE: <+pipeline.variables.linuxAmd64Candidate>
+                          POD_NAMESPACE: <+pipeline.variables.namespace>
+                        command: python3 scripts/assert_kubernetes_image.py
+        - stage:
+            name: Qualify Linux ARM64
+            identifier: qualify_linux_arm64
+            type: CI
+            spec:
+              cloneCodebase: true
+              platform: {os: Linux, arch: Arm64}
+              infrastructure:
+                type: KubernetesDirect
+                spec:
+                  connectorRef: <+pipeline.variables.linuxKubernetesConnector>
+                  namespace: <+pipeline.variables.namespace>
+                  automountServiceAccountToken: true
+                  serviceAccountName: ci-image-e2e-reader
+                  nodeSelector: {kubernetes.io/arch: arm64}
+                  tolerations:
+                    - {effect: NoSchedule, key: kubernetes.io/arch, operator: Equal, value: arm64}
+              execution:
+                steps:
+                  - step:
+                      type: Plugin
+                      name: Empty result contract
+                      identifier: empty_result_contract
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.linuxArm64Candidate>
+                        settings:
+                          qtest_url: https://unused.qtestnet.com
+                          bearer_token: not-used-for-empty-result
+                          project_id: "1"
+                          destination_type: test-cycle
+                          destination_id: "1"
+                          result_paths: no-results/**/*.xml
+                          empty_result: warn
+                  - step:
+                      type: Plugin
+                      name: Publish sandbox JUnit
+                      identifier: publish_sandbox_junit
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.linuxArm64Candidate>
+                        settings:
+                          qtest_url: <+pipeline.variables.qtestUrl>
+                          bearer_token: <+pipeline.variables.qtestToken>
+                          project_id: <+pipeline.variables.qtestProjectId>
+                          destination_type: test-cycle
+                          destination_id: <+pipeline.variables.qtestCycleId>
+                          result_paths: tests/fixtures/junit/*.xml
+                          identity_mode: class
+                  - step:
+                      type: Run
+                      name: Assert running image digest
+                      identifier: assert_running_image_digest
+                      spec:
+                        connectorRef: account.harnessImage
+                        image: python:3.13.7-alpine
+                        shell: Sh
+                        envVariables:
+                          CANDIDATE_IMAGE: <+pipeline.variables.linuxArm64Candidate>
+                          POD_NAMESPACE: <+pipeline.variables.namespace>
+                        command: python3 scripts/assert_kubernetes_image.py
+        - stage:
+            name: Qualify Windows LTSC 2019
+            identifier: qualify_windows_ltsc2019
+            type: CI
+            spec:
+              cloneCodebase: true
+              platform: {os: Windows, arch: Amd64}
+              infrastructure:
+                type: KubernetesDirect
+                spec:
+                  connectorRef: gcopdmwindowsbuildfarm
+                  namespace: <+pipeline.variables.namespace>
+                  os: Windows
+                  automountServiceAccountToken: true
+                  serviceAccountName: ci-image-e2e-reader
+                  nodeSelector:
+                    kubernetes.io/os: windows
+                    node.kubernetes.io/windows-build: "10.0.17763"
+                  tolerations:
+                    - {effect: NoSchedule, key: node.kubernetes.io/os, operator: Equal, value: windows}
+              execution:
+                steps:
+                  - step:
+                      type: Plugin
+                      name: Empty result contract
+                      identifier: empty_result_contract
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.windows2019Candidate>
+                        settings:
+                          qtest_url: https://unused.qtestnet.com
+                          bearer_token: not-used-for-empty-result
+                          project_id: "1"
+                          destination_type: test-cycle
+                          destination_id: "1"
+                          result_paths: no-results/**/*.xml
+                          empty_result: warn
+                  - step:
+                      type: Plugin
+                      name: Publish sandbox JUnit
+                      identifier: publish_sandbox_junit
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.windows2019Candidate>
+                        settings:
+                          qtest_url: <+pipeline.variables.qtestUrl>
+                          bearer_token: <+pipeline.variables.qtestToken>
+                          project_id: <+pipeline.variables.qtestProjectId>
+                          destination_type: test-cycle
+                          destination_id: <+pipeline.variables.qtestCycleId>
+                          result_paths: tests/fixtures/junit/*.xml
+                          identity_mode: method
+                  - step:
+                      type: Run
+                      name: Assert runtime and image digest
+                      identifier: assert_runtime_image_digest
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: mcr.microsoft.com/windows/servercore@sha256:bea74690d808bba3e6b0d4ba4c599305aea1f66c875f133f1e75855841dcb1d5
+                        shell: PowerShell
+                        envVariables:
+                          CANDIDATE_IMAGE: <+pipeline.variables.windows2019Candidate>
+                          POD_NAMESPACE: <+pipeline.variables.namespace>
+                          EXPECTED_WINDOWS_BUILD: "17763"
+                        command: powershell -File scripts/assert-kubernetes-image.ps1
+        - stage:
+            name: Qualify Windows LTSC 2022
+            identifier: qualify_windows_ltsc2022
+            type: CI
+            spec:
+              cloneCodebase: true
+              platform: {os: Windows, arch: Amd64}
+              infrastructure:
+                type: KubernetesDirect
+                spec:
+                  connectorRef: gcopdmwindowsbuildfarm
+                  namespace: <+pipeline.variables.namespace>
+                  os: Windows
+                  automountServiceAccountToken: true
+                  serviceAccountName: ci-image-e2e-reader
+                  nodeSelector:
+                    kubernetes.io/os: windows
+                    node.kubernetes.io/windows-build: "10.0.20348"
+                  tolerations:
+                    - {effect: NoSchedule, key: node.kubernetes.io/os, operator: Equal, value: windows}
+              execution:
+                steps:
+                  - step:
+                      type: Plugin
+                      name: Empty result contract
+                      identifier: empty_result_contract
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.windows2022Candidate>
+                        settings:
+                          qtest_url: https://unused.qtestnet.com
+                          bearer_token: not-used-for-empty-result
+                          project_id: "1"
+                          destination_type: test-cycle
+                          destination_id: "1"
+                          result_paths: no-results/**/*.xml
+                          empty_result: warn
+                  - step:
+                      type: Plugin
+                      name: Publish sandbox JUnit
+                      identifier: publish_sandbox_junit
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.windows2022Candidate>
+                        settings:
+                          qtest_url: <+pipeline.variables.qtestUrl>
+                          bearer_token: <+pipeline.variables.qtestToken>
+                          project_id: <+pipeline.variables.qtestProjectId>
+                          destination_type: test-cycle
+                          destination_id: <+pipeline.variables.qtestCycleId>
+                          result_paths: tests/fixtures/junit/*.xml
+                          identity_mode: class
+                  - step:
+                      type: Run
+                      name: Assert runtime and image digest
+                      identifier: assert_runtime_image_digest
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: mcr.microsoft.com/windows/servercore@sha256:e10503b9a4f7faafa30aa0f5d0e8e7f7ca30a4496b3b87d61178b4d7c6815fb5
+                        shell: PowerShell
+                        envVariables:
+                          CANDIDATE_IMAGE: <+pipeline.variables.windows2022Candidate>
+                          POD_NAMESPACE: <+pipeline.variables.namespace>
+                          EXPECTED_WINDOWS_BUILD: "20348"
+                        command: powershell -File scripts/assert-kubernetes-image.ps1
+        - stage:
+            name: Qualify Windows LTSC 2025
+            identifier: qualify_windows_ltsc2025
+            type: CI
+            spec:
+              cloneCodebase: true
+              platform: {os: Windows, arch: Amd64}
+              infrastructure:
+                type: KubernetesDirect
+                spec:
+                  connectorRef: gcopdmwindows2025
+                  namespace: <+pipeline.variables.namespace>
+                  os: Windows
+                  automountServiceAccountToken: true
+                  serviceAccountName: ci-image-e2e-reader
+                  nodeSelector:
+                    kubernetes.io/os: windows
+                    node.kubernetes.io/windows-build: "10.0.26100"
+                  tolerations:
+                    - {effect: NoSchedule, key: node.kubernetes.io/os, operator: Equal, value: windows}
+              execution:
+                steps:
+                  - step:
+                      type: Plugin
+                      name: Empty result contract
+                      identifier: empty_result_contract
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.windows2025Candidate>
+                        settings:
+                          qtest_url: https://unused.qtestnet.com
+                          bearer_token: not-used-for-empty-result
+                          project_id: "1"
+                          destination_type: test-cycle
+                          destination_id: "1"
+                          result_paths: no-results/**/*.xml
+                          empty_result: warn
+                  - step:
+                      type: Plugin
+                      name: Publish sandbox JUnit
+                      identifier: publish_sandbox_junit
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.windows2025Candidate>
+                        settings:
+                          qtest_url: <+pipeline.variables.qtestUrl>
+                          bearer_token: <+pipeline.variables.qtestToken>
+                          project_id: <+pipeline.variables.qtestProjectId>
+                          destination_type: test-cycle
+                          destination_id: <+pipeline.variables.qtestCycleId>
+                          result_paths: tests/fixtures/junit/*.xml
+                          identity_mode: method
+                  - step:
+                      type: Run
+                      name: Assert runtime and image digest
+                      identifier: assert_runtime_image_digest
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: mcr.microsoft.com/windows/servercore@sha256:22505496dd4229dba63453ba0c6dc31c06fd3e11810e5b8e429aa6b16dab2457
+                        shell: PowerShell
+                        envVariables:
+                          CANDIDATE_IMAGE: <+pipeline.variables.windows2025Candidate>
+                          POD_NAMESPACE: <+pipeline.variables.namespace>
+                          EXPECTED_WINDOWS_BUILD: "26100"
+                        command: powershell -File scripts/assert-kubernetes-image.ps1

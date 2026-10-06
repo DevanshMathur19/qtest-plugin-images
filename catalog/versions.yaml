@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "plugin": {
+    "name": "qtest-publisher",
+    "version": "1.0.0",
+    "go_version": "1.25.13",
+    "source_url": "https://github.com/DevanshMathur19/qtest-publisher",
+    "source_revision": "816464df142eec022158fe7685772d8eabd65b82"
+  },
+  "build_tools": {
+    "go_windows_amd64": {
+      "version": "1.25.13",
+      "url": "https://go.dev/dl/go1.25.13.windows-amd64.zip",
+      "sha256": "54a6bbffada82938ac4ae66e354b2e9c04ebdceff96f8d0455406c723b5ed1fc"
+    }
+  },
+  "repository": "devanshmathur19/qtest-publisher",
+  "production_repository": "harness/qtest-publisher",
+  "supported": false,
+  "platforms": {
+    "linux-amd64": {
+      "dockerfile": "Dockerfile.linux.amd64",
+      "tag_suffix": "linux-amd64",
+      "runtime_parent": {
+        "image": "gcr.io/distroless/static-debian12",
+        "tag": "nonroot",
+        "digest": "sha256:52dcfbabb7457ea47c82f6e13af8c8a4a1d9f7b0145142b3ecab20f2b888411d"
+      }
+    },
+    "linux-arm64": {
+      "dockerfile": "Dockerfile.linux.arm64",
+      "tag_suffix": "linux-arm64",
+      "runtime_parent": {
+        "image": "gcr.io/distroless/static-debian12",
+        "tag": "nonroot",
+        "digest": "sha256:06c3c14b7fa252d9f4285242d2d665ce3b51f74b02d3c529464f220f2912aecb"
+      }
+    },
+    "windows-amd64-ltsc2019": {
+      "dockerfile": "Dockerfile.windows.amd64.ltsc2019",
+      "tag_suffix": "windows-ltsc2019-amd64",
+      "ltsc": "2019",
+      "windows_build": "17763",
+      "os_version": "10.0.17763.9245",
+      "runtime_parent": {
+        "image": "mcr.microsoft.com/windows/nanoserver",
+        "tag": "1809",
+        "digest": "sha256:c5980a8cd05a3902130f95fbad5b7db35d21e00183b063ee6bca5c1dcab40ce9"
+      },
+      "builder_parent": {
+        "image": "mcr.microsoft.com/windows/servercore",
+        "tag": "1809",
+        "digest": "sha256:bea74690d808bba3e6b0d4ba4c599305aea1f66c875f133f1e75855841dcb1d5"
+      }
+    },
+    "windows-amd64-ltsc2022": {
+      "dockerfile": "Dockerfile.windows.amd64.ltsc2022",
+      "tag_suffix": "windows-ltsc2022-amd64",
+      "ltsc": "2022",
+      "windows_build": "20348",
+      "os_version": "10.0.20348.5622",
+      "runtime_parent": {
+        "image": "mcr.microsoft.com/windows/nanoserver",
+        "tag": "ltsc2022",
+        "digest": "sha256:87af42244113104b3ce4b5646f9ec1ab6690e6753dd68924e698bdc2132546b3"
+      },
+      "builder_parent": {
+        "image": "mcr.microsoft.com/windows/servercore",
+        "tag": "ltsc2022",
+        "digest": "sha256:e10503b9a4f7faafa30aa0f5d0e8e7f7ca30a4496b3b87d61178b4d7c6815fb5"
+      }
+    },
+    "windows-amd64-ltsc2025": {
+      "dockerfile": "Dockerfile.windows.amd64.ltsc2025",
+      "tag_suffix": "windows-ltsc2025-amd64",
+      "ltsc": "2025",
+      "windows_build": "26100",
+      "os_version": "10.0.26100.33438",
+      "runtime_parent": {
+        "image": "mcr.microsoft.com/windows/nanoserver",
+        "tag": "ltsc2025",
+        "digest": "sha256:4fe6f59e0aadb628a933345eae1f5ab43a2af802969ac0e2ef996c66a3188438"
+      },
+      "builder_parent": {
+        "image": "mcr.microsoft.com/windows/servercore",
+        "tag": "ltsc2025",
+        "digest": "sha256:22505496dd4229dba63453ba0c6dc31c06fd3e11810e5b8e429aa6b16dab2457"
+      }
+    }
+  }
+}
