@@ -65,6 +65,8 @@ def catalog() -> dict[str, Any]:
         raise GateError("source URL must use HTTPS")
     if not REVISION_RE.fullmatch(str(plugin.get("source_revision", ""))):
         raise GateError("source revision must be a full Git commit")
+    if not isinstance(plugin.get("revision"), int) or plugin["revision"] < 1:
+        raise GateError("plugin release revision must be a positive integer")
     if not re.fullmatch(r"\d+\.\d+\.\d+", str(plugin.get("go_version", ""))):
         raise GateError("Go version must be exact")
     go_sdk = value.get("build_tools", {}).get("go_windows_amd64", {})
@@ -119,7 +121,10 @@ def dockerfile_relative(cat: dict[str, Any], platform_name: str) -> Path:
 
 
 def child_tag(cat: dict[str, Any], platform_name: str) -> str:
-    return f"{cat['plugin']['version']}-{cat['platforms'][platform_name]['tag_suffix']}-r1"
+    return (
+        f"{cat['plugin']['version']}-{cat['platforms'][platform_name]['tag_suffix']}"
+        f"-r{cat['plugin']['revision']}"
+    )
 
 
 def moving_tag(cat: dict[str, Any], platform_name: str) -> str:
@@ -164,7 +169,7 @@ def render_windows(cat: dict[str, Any], platform_name: str) -> str:
             "",
             f"ARG RUNTIME_IMAGE={parent['image']}@{parent['digest']}",
             "FROM ${RUNTIME_IMAGE}",
-            "USER ContainerAdministrator",
+            "USER ContainerUser",
             "WORKDIR C:/workspace",
             "COPY release/windows/amd64/qtest-publisher.exe C:/bin/qtest-publisher.exe",
             f'LABEL org.opencontainers.image.source="{cat["plugin"]["source_url"]}" `',
@@ -313,6 +318,14 @@ def command_validate(args: argparse.Namespace) -> None:
     if len(render_all(cat)) != 5:
         raise GateError("generator must produce exactly five Dockerfiles")
     print("qTest catalog, source pin, generator, and child lock are valid")
+
+
+def command_validate_lock(_: argparse.Namespace) -> None:
+    cat = catalog()
+    validate_child_lock(cat)
+    if len(render_all(cat)) != 5:
+        raise GateError("generator must produce exactly five Dockerfiles")
+    print("qTest catalog, generator, and child lock are valid")
 
 
 def command_generate(args: argparse.Namespace) -> None:
@@ -487,6 +500,7 @@ def parser() -> argparse.ArgumentParser:
         command = commands.add_parser(name)
         command.add_argument("--source-root")
         command.set_defaults(func=function)
+    commands.add_parser("validate-lock").set_defaults(func=command_validate_lock)
     commands.add_parser("inventory").set_defaults(func=command_inventory)
     for name in ("record-published", "record-qualified", "record-promoted"):
         command = commands.add_parser(name)

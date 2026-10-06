@@ -6,11 +6,13 @@ pipeline:
   properties:
     ci:
       codebase:
+        connectorRef: dmgitcon
         repoName: qtest-plugin-images
         build: <+input>
   variables:
     - {name: dockerConnector, type: String, value: dmdockerconn}
-    - {name: linuxKubernetesConnector, type: String, value: <+input>}
+    - {name: linuxAmd64KubernetesConnector, type: String, value: gcopdmlinuxamd64}
+    - {name: linuxArm64KubernetesConnector, type: String, value: gcopdmarm64}
     - {name: namespace, type: String, value: cie-test}
     - {name: linuxAmd64Candidate, type: String, value: <+input>}
     - {name: linuxArm64Candidate, type: String, value: <+input>}
@@ -22,6 +24,54 @@ pipeline:
     - {name: qtestProjectId, type: String, value: <+input>}
     - {name: qtestCycleId, type: String, value: <+input>}
   stages:
+    - stage:
+        name: Refuse mutable candidates
+        identifier: refuse_mutable_candidates
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform: {os: Linux, arch: Amd64}
+          runtime: {type: Cloud, spec: {}}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Require five digest-pinned candidates
+                  identifier: require_digest_pins
+                  spec:
+                    connectorRef: <+pipeline.variables.dockerConnector>
+                    image: docker.io/library/python:3.13.7-alpine@sha256:9ba6d8cbebf0fb6546ae71f2a1c14f6ffd2fdab83af7fa5669734ef30ad48844
+                    shell: Sh
+                    envVariables:
+                      CANDIDATES: <+pipeline.variables.linuxAmd64Candidate>,<+pipeline.variables.linuxArm64Candidate>,<+pipeline.variables.windows2019Candidate>,<+pipeline.variables.windows2022Candidate>,<+pipeline.variables.windows2025Candidate>
+                    command: |
+                      python3 scripts/release.py validate-lock
+                      python3 - <<'PY'
+                      import json
+                      import os
+                      import re
+                      candidates = os.environ["CANDIDATES"].split(",")
+                      platforms = [
+                          "linux-amd64",
+                          "linux-arm64",
+                          "windows-amd64-ltsc2019",
+                          "windows-amd64-ltsc2022",
+                          "windows-amd64-ltsc2025",
+                      ]
+                      pattern = re.compile(r"^[^@\s]+@sha256:[0-9a-f]{64}$")
+                      if len(candidates) != 5 or any(not pattern.fullmatch(item) for item in candidates):
+                          raise SystemExit("all five candidate images must be pinned by digest")
+                      lock = json.load(open("locks/platform-child-digests.json"))
+                      for platform, candidate in zip(platforms, candidates):
+                          child = lock["children"][platform]
+                          expected = f"{lock['repository']}@{child['digest']}"
+                          normalized = candidate.removeprefix("docker.io/")
+                          if not child["published"] or normalized != expected:
+                              raise SystemExit(
+                                  f"{platform} candidate does not match published digest lock: "
+                                  f"{normalized} != {expected}"
+                              )
+                      PY
     - parallel:
         - stage:
             name: Qualify Linux AMD64
@@ -33,7 +83,7 @@ pipeline:
               infrastructure:
                 type: KubernetesDirect
                 spec:
-                  connectorRef: <+pipeline.variables.linuxKubernetesConnector>
+                  connectorRef: <+pipeline.variables.linuxAmd64KubernetesConnector>
                   namespace: <+pipeline.variables.namespace>
                   automountServiceAccountToken: true
                   serviceAccountName: ci-image-e2e-reader
@@ -57,6 +107,25 @@ pipeline:
                           empty_result: warn
                   - step:
                       type: Plugin
+                      name: Expected operational failure
+                      identifier: expected_operational_failure
+                      failureStrategies:
+                        - onFailure:
+                            errors: [AllErrors]
+                            action: {type: Ignore}
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.linuxAmd64Candidate>
+                        settings:
+                          qtest_url: https://127.0.0.1:1
+                          bearer_token: expected-failure-only
+                          project_id: "1"
+                          destination_type: test-cycle
+                          destination_id: "1"
+                          result_paths: tests/fixtures/junit/*.xml
+                          timeout: 5s
+                  - step:
+                      type: Plugin
                       name: Publish sandbox JUnit
                       identifier: publish_sandbox_junit
                       spec:
@@ -68,6 +137,8 @@ pipeline:
                           project_id: <+pipeline.variables.qtestProjectId>
                           destination_type: test-cycle
                           destination_id: <+pipeline.variables.qtestCycleId>
+                          suite_name: qtest-qualification-linux-amd64
+                          reuse_suite: "true"
                           result_paths: tests/fixtures/junit/*.xml
                           identity_mode: method
                   - step:
@@ -76,12 +147,15 @@ pipeline:
                       identifier: assert_running_image_digest
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
-                        image: python:3.13.7-alpine
+                        image: docker.io/library/python:3.13.7-alpine@sha256:9ba6d8cbebf0fb6546ae71f2a1c14f6ffd2fdab83af7fa5669734ef30ad48844
                         shell: Sh
                         envVariables:
                           CANDIDATE_IMAGE: <+pipeline.variables.linuxAmd64Candidate>
                           POD_NAMESPACE: <+pipeline.variables.namespace>
-                        command: python3 scripts/assert_kubernetes_image.py
+                          EXPECTED_FAILURE_STATUS: <+execution.steps.expected_operational_failure.status>
+                        command: |
+                          test "$EXPECTED_FAILURE_STATUS" != Succeeded
+                          python3 scripts/assert_kubernetes_image.py
         - stage:
             name: Qualify Linux ARM64
             identifier: qualify_linux_arm64
@@ -92,7 +166,7 @@ pipeline:
               infrastructure:
                 type: KubernetesDirect
                 spec:
-                  connectorRef: <+pipeline.variables.linuxKubernetesConnector>
+                  connectorRef: <+pipeline.variables.linuxArm64KubernetesConnector>
                   namespace: <+pipeline.variables.namespace>
                   automountServiceAccountToken: true
                   serviceAccountName: ci-image-e2e-reader
@@ -118,6 +192,25 @@ pipeline:
                           empty_result: warn
                   - step:
                       type: Plugin
+                      name: Expected operational failure
+                      identifier: expected_operational_failure
+                      failureStrategies:
+                        - onFailure:
+                            errors: [AllErrors]
+                            action: {type: Ignore}
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.linuxArm64Candidate>
+                        settings:
+                          qtest_url: https://127.0.0.1:1
+                          bearer_token: expected-failure-only
+                          project_id: "1"
+                          destination_type: test-cycle
+                          destination_id: "1"
+                          result_paths: tests/fixtures/junit/*.xml
+                          timeout: 5s
+                  - step:
+                      type: Plugin
                       name: Publish sandbox JUnit
                       identifier: publish_sandbox_junit
                       spec:
@@ -129,6 +222,8 @@ pipeline:
                           project_id: <+pipeline.variables.qtestProjectId>
                           destination_type: test-cycle
                           destination_id: <+pipeline.variables.qtestCycleId>
+                          suite_name: qtest-qualification-linux-arm64
+                          reuse_suite: "true"
                           result_paths: tests/fixtures/junit/*.xml
                           identity_mode: class
                   - step:
@@ -137,12 +232,15 @@ pipeline:
                       identifier: assert_running_image_digest
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
-                        image: python:3.13.7-alpine
+                        image: docker.io/library/python:3.13.7-alpine@sha256:9ba6d8cbebf0fb6546ae71f2a1c14f6ffd2fdab83af7fa5669734ef30ad48844
                         shell: Sh
                         envVariables:
                           CANDIDATE_IMAGE: <+pipeline.variables.linuxArm64Candidate>
                           POD_NAMESPACE: <+pipeline.variables.namespace>
-                        command: python3 scripts/assert_kubernetes_image.py
+                          EXPECTED_FAILURE_STATUS: <+execution.steps.expected_operational_failure.status>
+                        command: |
+                          test "$EXPECTED_FAILURE_STATUS" != Succeeded
+                          python3 scripts/assert_kubernetes_image.py
         - stage:
             name: Qualify Windows LTSC 2019
             identifier: qualify_windows_ltsc2019
@@ -182,6 +280,25 @@ pipeline:
                           empty_result: warn
                   - step:
                       type: Plugin
+                      name: Expected operational failure
+                      identifier: expected_operational_failure
+                      failureStrategies:
+                        - onFailure:
+                            errors: [AllErrors]
+                            action: {type: Ignore}
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.windows2019Candidate>
+                        settings:
+                          qtest_url: https://127.0.0.1:1
+                          bearer_token: expected-failure-only
+                          project_id: "1"
+                          destination_type: test-cycle
+                          destination_id: "1"
+                          result_paths: tests/fixtures/junit/*.xml
+                          timeout: 5s
+                  - step:
+                      type: Plugin
                       name: Publish sandbox JUnit
                       identifier: publish_sandbox_junit
                       spec:
@@ -193,6 +310,8 @@ pipeline:
                           project_id: <+pipeline.variables.qtestProjectId>
                           destination_type: test-cycle
                           destination_id: <+pipeline.variables.qtestCycleId>
+                          suite_name: qtest-qualification-windows-ltsc2019
+                          reuse_suite: "true"
                           result_paths: tests/fixtures/junit/*.xml
                           identity_mode: method
                   - step:
@@ -207,7 +326,10 @@ pipeline:
                           CANDIDATE_IMAGE: <+pipeline.variables.windows2019Candidate>
                           POD_NAMESPACE: <+pipeline.variables.namespace>
                           EXPECTED_WINDOWS_BUILD: "17763"
-                        command: powershell -File scripts/assert-kubernetes-image.ps1
+                          EXPECTED_FAILURE_STATUS: <+execution.steps.expected_operational_failure.status>
+                        command: |
+                          if ($env:EXPECTED_FAILURE_STATUS -eq 'Succeeded') { throw 'expected operational failure unexpectedly succeeded' }
+                          powershell -File scripts/assert-kubernetes-image.ps1
         - stage:
             name: Qualify Windows LTSC 2022
             identifier: qualify_windows_ltsc2022
@@ -247,6 +369,25 @@ pipeline:
                           empty_result: warn
                   - step:
                       type: Plugin
+                      name: Expected operational failure
+                      identifier: expected_operational_failure
+                      failureStrategies:
+                        - onFailure:
+                            errors: [AllErrors]
+                            action: {type: Ignore}
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.windows2022Candidate>
+                        settings:
+                          qtest_url: https://127.0.0.1:1
+                          bearer_token: expected-failure-only
+                          project_id: "1"
+                          destination_type: test-cycle
+                          destination_id: "1"
+                          result_paths: tests/fixtures/junit/*.xml
+                          timeout: 5s
+                  - step:
+                      type: Plugin
                       name: Publish sandbox JUnit
                       identifier: publish_sandbox_junit
                       spec:
@@ -258,6 +399,8 @@ pipeline:
                           project_id: <+pipeline.variables.qtestProjectId>
                           destination_type: test-cycle
                           destination_id: <+pipeline.variables.qtestCycleId>
+                          suite_name: qtest-qualification-windows-ltsc2022
+                          reuse_suite: "true"
                           result_paths: tests/fixtures/junit/*.xml
                           identity_mode: class
                   - step:
@@ -272,7 +415,10 @@ pipeline:
                           CANDIDATE_IMAGE: <+pipeline.variables.windows2022Candidate>
                           POD_NAMESPACE: <+pipeline.variables.namespace>
                           EXPECTED_WINDOWS_BUILD: "20348"
-                        command: powershell -File scripts/assert-kubernetes-image.ps1
+                          EXPECTED_FAILURE_STATUS: <+execution.steps.expected_operational_failure.status>
+                        command: |
+                          if ($env:EXPECTED_FAILURE_STATUS -eq 'Succeeded') { throw 'expected operational failure unexpectedly succeeded' }
+                          powershell -File scripts/assert-kubernetes-image.ps1
         - stage:
             name: Qualify Windows LTSC 2025
             identifier: qualify_windows_ltsc2025
@@ -312,6 +458,25 @@ pipeline:
                           empty_result: warn
                   - step:
                       type: Plugin
+                      name: Expected operational failure
+                      identifier: expected_operational_failure
+                      failureStrategies:
+                        - onFailure:
+                            errors: [AllErrors]
+                            action: {type: Ignore}
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.windows2025Candidate>
+                        settings:
+                          qtest_url: https://127.0.0.1:1
+                          bearer_token: expected-failure-only
+                          project_id: "1"
+                          destination_type: test-cycle
+                          destination_id: "1"
+                          result_paths: tests/fixtures/junit/*.xml
+                          timeout: 5s
+                  - step:
+                      type: Plugin
                       name: Publish sandbox JUnit
                       identifier: publish_sandbox_junit
                       spec:
@@ -323,6 +488,8 @@ pipeline:
                           project_id: <+pipeline.variables.qtestProjectId>
                           destination_type: test-cycle
                           destination_id: <+pipeline.variables.qtestCycleId>
+                          suite_name: qtest-qualification-windows-ltsc2025
+                          reuse_suite: "true"
                           result_paths: tests/fixtures/junit/*.xml
                           identity_mode: method
                   - step:
@@ -337,4 +504,7 @@ pipeline:
                           CANDIDATE_IMAGE: <+pipeline.variables.windows2025Candidate>
                           POD_NAMESPACE: <+pipeline.variables.namespace>
                           EXPECTED_WINDOWS_BUILD: "26100"
-                        command: powershell -File scripts/assert-kubernetes-image.ps1
+                          EXPECTED_FAILURE_STATUS: <+execution.steps.expected_operational_failure.status>
+                        command: |
+                          if ($env:EXPECTED_FAILURE_STATUS -eq 'Succeeded') { throw 'expected operational failure unexpectedly succeeded' }
+                          powershell -File scripts/assert-kubernetes-image.ps1

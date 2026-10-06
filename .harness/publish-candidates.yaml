@@ -12,7 +12,6 @@ pipeline:
   variables:
     - {name: dockerConnector, type: String, value: dmdockerconn}
     - {name: windows2019BuilderPool, type: String, value: windows-2019}
-    - {name: windows2022BuilderPool, type: String, value: windows-2022}
     - {name: windows2025BuilderPool, type: String, value: windows-2025}
     - {name: goWindowsUrl, type: String, value: "https://go.dev/dl/go1.25.13.windows-amd64.zip"}
     - {name: goWindowsSha256, type: String, value: "54a6bbffada82938ac4ae66e354b2e9c04ebdceff96f8d0455406c723b5ed1fc"}
@@ -37,9 +36,17 @@ pipeline:
                     shell: Sh
                     command: |
                       set -eu
-                      apk add --no-cache build-base git
-                      git cat-file -e 816464df142eec022158fe7685772d8eabd65b82^{commit}
-                      git diff --exit-code 816464df142eec022158fe7685772d8eabd65b82 -- go.mod main.go plugin
+                      apk add --no-cache build-base git python3
+                      git cat-file -e 803c1f8de400c272a4a81395c8906bebaa6e1e84^{commit}
+                      git diff --exit-code 803c1f8de400c272a4a81395c8906bebaa6e1e84 -- go.mod main.go plugin
+                      cat <<'CHECKSUMS' | sha256sum -c -
+                      3d94e9908848fa8f1b85fb10118ce2587b5806805a95343ff78035e67839f6b9  docker/Dockerfile.linux.amd64
+                      07df24653171a0e0924117f44e684227d3677d25d5a0a48ba630063314142add  docker/Dockerfile.linux.arm64
+                      e5d47146e38b5d9c84cd6f07b4003e7d7f917d6eca366cd16aad66e9b4534987  docker/Dockerfile.windows.amd64.ltsc2019
+                      f54d68987e37a341ad062bbd253fd66f7b80b3a1ef3061f82d0ebd6297e2f29e  docker/Dockerfile.windows.amd64.ltsc2022
+                      c936258b4c0c9561d1ab850e80e9e4210fdf4c515bd1333f59df034e3295cd13  docker/Dockerfile.windows.amd64.ltsc2025
+                      0b3c226f631703b76cafd4bb7bb1a15cc8f3b068f65b43a274dd66b264ee6ee7  docker/manifest.tmpl
+                      CHECKSUMS
                       test "$(go env GOVERSION)" = go1.25.13
                       go test ./...
                       go test -race ./...
@@ -50,13 +57,48 @@ pipeline:
                       for target in linux/amd64 linux/arm64 windows/amd64; do
                         GOOS=${target%/*} GOARCH=${target#*/} CGO_ENABLED=0 go build -trimpath ./...
                       done
+                      python3 - <<'PY'
+                      import json
+                      import urllib.error
+                      import urllib.request
+
+                      repository = "devanshmathur19/qtest-publisher"
+                      tags = [
+                          "1.0.0-linux-amd64-r2",
+                          "1.0.0-linux-arm64-r2",
+                          "1.0.0-windows-ltsc2019-amd64-r2",
+                          "1.0.0-windows-ltsc2022-amd64-r2",
+                          "1.0.0-windows-ltsc2025-amd64-r2",
+                      ]
+                      token_url = (
+                          "https://auth.docker.io/token?service=registry.docker.io"
+                          f"&scope=repository:{repository}:pull"
+                      )
+                      with urllib.request.urlopen(token_url, timeout=30) as response:
+                          token = json.load(response)["token"]
+                      for tag in tags:
+                          request = urllib.request.Request(
+                              f"https://registry-1.docker.io/v2/{repository}/manifests/{tag}",
+                              method="HEAD",
+                              headers={
+                                  "Authorization": f"Bearer {token}",
+                                  "Accept": "application/vnd.docker.distribution.manifest.v2+json",
+                              },
+                          )
+                          try:
+                              with urllib.request.urlopen(request, timeout=30):
+                                  raise SystemExit(f"refusing to overwrite immutable tag: {tag}")
+                          except urllib.error.HTTPError as error:
+                              if error.code != 404:
+                                  raise
+                      PY
               - step:
                   type: Run
                   name: Secret scan
                   identifier: secret_scan
                   spec:
                     connectorRef: <+pipeline.variables.dockerConnector>
-                    image: zricethezav/gitleaks:v8.28.0
+                    image: docker.io/zricethezav/gitleaks:v8.28.0@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854
                     shell: Sh
                     command: gitleaks detect --source . --no-git --redact
     - parallel:
@@ -92,12 +134,14 @@ pipeline:
                       type: BuildAndPushDockerRegistry
                       name: Publish immutable child
                       identifier: publish_immutable_child
+                      timeout: 30m
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         repo: devanshmathur19/qtest-publisher
-                        tags: [1.0.0-linux-amd64-r1]
+                        tags: [1.0.0-linux-amd64-r2]
                         dockerfile: docker/Dockerfile.linux.amd64
                         context: .
+                        caching: false
         - stage:
             name: Publish Linux ARM64
             identifier: publish_linux_arm64
@@ -130,12 +174,14 @@ pipeline:
                       type: BuildAndPushDockerRegistry
                       name: Publish immutable child
                       identifier: publish_immutable_child
+                      timeout: 30m
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         repo: devanshmathur19/qtest-publisher
-                        tags: [1.0.0-linux-arm64-r1]
+                        tags: [1.0.0-linux-arm64-r2]
                         dockerfile: docker/Dockerfile.linux.arm64
                         context: .
+                        caching: false
         - stage:
             name: Publish Windows LTSC 2019
             identifier: publish_windows_ltsc2019
@@ -160,12 +206,15 @@ pipeline:
                       type: Run
                       name: Build verified static binary
                       identifier: build_verified_static_binary
+                      timeout: 30m
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         image: mcr.microsoft.com/windows/servercore@sha256:bea74690d808bba3e6b0d4ba4c599305aea1f66c875f133f1e75855841dcb1d5
                         shell: Powershell
                         command: |
                           $ErrorActionPreference = 'Stop'
+                          $actual = Get-ItemPropertyValue 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' CurrentBuild
+                          if ($actual -ne '17763') { throw "Expected Windows build 17763, got $actual" }
                           Invoke-WebRequest -UseBasicParsing -Uri '<+pipeline.variables.goWindowsUrl>' -OutFile go.zip
                           if ((Get-FileHash -Algorithm SHA256 go.zip).Hash.ToLowerInvariant() -ne '<+pipeline.variables.goWindowsSha256>') { throw 'Go SDK SHA-256 mismatch' }
                           Expand-Archive go.zip -DestinationPath C:\tools -Force
@@ -176,12 +225,14 @@ pipeline:
                       type: BuildAndPushDockerRegistry
                       name: Publish immutable child
                       identifier: publish_immutable_child
+                      timeout: 60m
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         repo: devanshmathur19/qtest-publisher
-                        tags: [1.0.0-windows-ltsc2019-amd64-r1]
+                        tags: [1.0.0-windows-ltsc2019-amd64-r2]
                         dockerfile: docker/Dockerfile.windows.amd64.ltsc2019
                         context: .
+                        caching: false
               delegateSelectors: [windows-vm]
         - stage:
             name: Publish Windows LTSC 2022
@@ -194,25 +245,22 @@ pipeline:
               cloneCodebase: true
               slsa_provenance: {enabled: true}
               platform: {os: Windows, arch: Amd64}
-              infrastructure:
-                type: VM
-                spec:
-                  type: Pool
-                  spec:
-                    poolName: <+pipeline.variables.windows2022BuilderPool>
-                    os: Windows
+              runtime: {type: Cloud, spec: {}}
               execution:
                 steps:
                   - step:
                       type: Run
                       name: Build verified static binary
                       identifier: build_verified_static_binary
+                      timeout: 30m
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         image: mcr.microsoft.com/windows/servercore@sha256:e10503b9a4f7faafa30aa0f5d0e8e7f7ca30a4496b3b87d61178b4d7c6815fb5
                         shell: Powershell
                         command: |
                           $ErrorActionPreference = 'Stop'
+                          $actual = Get-ItemPropertyValue 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' CurrentBuild
+                          if ($actual -ne '20348') { throw "Expected Windows build 20348, got $actual" }
                           Invoke-WebRequest -UseBasicParsing -Uri '<+pipeline.variables.goWindowsUrl>' -OutFile go.zip
                           if ((Get-FileHash -Algorithm SHA256 go.zip).Hash.ToLowerInvariant() -ne '<+pipeline.variables.goWindowsSha256>') { throw 'Go SDK SHA-256 mismatch' }
                           Expand-Archive go.zip -DestinationPath C:\tools -Force
@@ -223,13 +271,14 @@ pipeline:
                       type: BuildAndPushDockerRegistry
                       name: Publish immutable child
                       identifier: publish_immutable_child
+                      timeout: 60m
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         repo: devanshmathur19/qtest-publisher
-                        tags: [1.0.0-windows-ltsc2022-amd64-r1]
+                        tags: [1.0.0-windows-ltsc2022-amd64-r2]
                         dockerfile: docker/Dockerfile.windows.amd64.ltsc2022
                         context: .
-              delegateSelectors: [windows-vm]
+                        caching: false
         - stage:
             name: Publish Windows LTSC 2025
             identifier: publish_windows_ltsc2025
@@ -254,12 +303,15 @@ pipeline:
                       type: Run
                       name: Build verified static binary
                       identifier: build_verified_static_binary
+                      timeout: 30m
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         image: mcr.microsoft.com/windows/servercore@sha256:22505496dd4229dba63453ba0c6dc31c06fd3e11810e5b8e429aa6b16dab2457
                         shell: Powershell
                         command: |
                           $ErrorActionPreference = 'Stop'
+                          $actual = Get-ItemPropertyValue 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' CurrentBuild
+                          if ($actual -ne '26100') { throw "Expected Windows build 26100, got $actual" }
                           Invoke-WebRequest -UseBasicParsing -Uri '<+pipeline.variables.goWindowsUrl>' -OutFile go.zip
                           if ((Get-FileHash -Algorithm SHA256 go.zip).Hash.ToLowerInvariant() -ne '<+pipeline.variables.goWindowsSha256>') { throw 'Go SDK SHA-256 mismatch' }
                           Expand-Archive go.zip -DestinationPath C:\tools -Force
@@ -270,10 +322,12 @@ pipeline:
                       type: BuildAndPushDockerRegistry
                       name: Publish immutable child
                       identifier: publish_immutable_child
+                      timeout: 60m
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         repo: devanshmathur19/qtest-publisher
-                        tags: [1.0.0-windows-ltsc2025-amd64-r1]
+                        tags: [1.0.0-windows-ltsc2025-amd64-r2]
                         dockerfile: docker/Dockerfile.windows.amd64.ltsc2025
                         context: .
+                        caching: false
               delegateSelectors: [windows-vm]

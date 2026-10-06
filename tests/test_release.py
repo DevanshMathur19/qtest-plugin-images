@@ -1,3 +1,4 @@
+import hashlib
 import importlib.util
 import json
 import tempfile
@@ -85,6 +86,8 @@ class ReleaseTests(unittest.TestCase):
             windows = rendered[Path(f"docker/Dockerfile.windows.amd64.{name}")]
             self.assertIn("mcr.microsoft.com/windows/nanoserver@sha256:", windows)
             self.assertIn("qtest-publisher.exe", windows)
+            self.assertIn("USER ContainerUser", windows)
+            self.assertNotIn("ContainerAdministrator", windows)
             self.assertNotIn("servercore", windows.lower())
         self.assertTrue(all(":latest" not in content for content in rendered.values()))
 
@@ -126,6 +129,9 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual("unqualified", lock["qualification_state"])
         self.assertEqual("unpromoted", lock["promotion_state"])
         self.assertFalse(lock["supported"])
+
+    def test_lock_validation_does_not_require_source_checkout(self):
+        release.command_validate_lock(SimpleNamespace())
 
     def test_lifecycle_requires_publish_then_qualify(self):
         source = self.fresh_lock()
@@ -194,26 +200,78 @@ class ReleaseTests(unittest.TestCase):
         promote = (pipeline_root / "secure-promote.yaml").read_text()
 
         self.assertEqual(5, publish.count("type: BuildAndPushDockerRegistry"))
-        self.assertEqual(3, publish.count("type: VM"))
-        self.assertEqual(3, publish.count("runtime: {type: Cloud, spec: {}}"))
-        self.assertEqual(3, publish.count("delegateSelectors: [windows-vm]"))
+        self.assertEqual(2, publish.count("type: VM"))
+        self.assertEqual(4, publish.count("runtime: {type: Cloud, spec: {}}"))
+        self.assertEqual(2, publish.count("delegateSelectors: [windows-vm]"))
+        self.assertNotIn("windows2022BuilderPool", publish)
+        self.assertIn("name: Publish Windows LTSC 2022", publish)
+        self.assertEqual(3, publish.count("Get-ItemPropertyValue"))
+        self.assertIn("Expected Windows build 20348", publish)
+        self.assertIn("refusing to overwrite immutable tag", publish)
+        self.assertEqual(5, publish.count("caching: false"))
+        self.assertEqual(5, publish.count("slsa_provenance: {enabled: true}"))
+        self.assertGreaterEqual(
+            publish.count(release.catalog()["plugin"]["source_revision"]), 2
+        )
+        expected_assets = release.render_all(release.catalog())
+        expected_assets[Path("docker/manifest.tmpl")] = release.render_manifest(
+            release.catalog()
+        )
+        for path, content in expected_assets.items():
+            digest = hashlib.sha256(content.encode()).hexdigest()
+            self.assertIn(f"{digest}  {path}", publish)
+        for platform in release.EXPECTED_PLATFORMS:
+            self.assertEqual(2, publish.count(release.child_tag(release.catalog(), platform)))
         self.assertIn("go test -race ./...", publish)
         self.assertIn("govulncheck@v1.1.4", publish)
         self.assertIn("staticcheck@v0.6.1", publish)
         self.assertIn("gitleaks:v8.28.0", publish)
         self.assertNotIn(":latest", publish)
 
+        self.assertIn("connectorRef: dmgitcon", qualify)
+        self.assertIn(
+            "name: linuxAmd64KubernetesConnector, type: String, value: gcopdmlinuxamd64",
+            qualify,
+        )
+        self.assertIn(
+            "name: linuxArm64KubernetesConnector, type: String, value: gcopdmarm64",
+            qualify,
+        )
+        self.assertIn("name: Require five digest-pinned candidates", qualify)
+        self.assertIn("candidate does not match published digest lock", qualify)
+        self.assertIn("python3 scripts/release.py validate-lock", qualify)
+        self.assertEqual(5, qualify.count("suite_name: qtest-qualification-"))
+        self.assertEqual(5, qualify.count('reuse_suite: "true"'))
         self.assertEqual(5, qualify.count("name: Empty result contract"))
+        self.assertEqual(5, qualify.count("name: Expected operational failure"))
+        self.assertEqual(5, qualify.count("EXPECTED_FAILURE_STATUS:"))
         self.assertEqual(5, qualify.count("name: Publish sandbox JUnit"))
-        self.assertEqual(5, qualify.count("Assert running image digest") + qualify.count("Assert runtime and image digest"))
+        self.assertEqual(
+            5,
+            qualify.count("Assert running image digest")
+            + qualify.count("Assert runtime and image digest"),
+        )
         self.assertEqual(5, qualify.count("type: KubernetesDirect"))
         self.assertIn("node.kubernetes.io/windows-build: \"10.0.26100\"", qualify)
 
+        self.assertIn("connectorRef: dmgitcon", promote)
+        self.assertIn("type slsaprovenance", promote)
+        self.assertGreaterEqual(promote.count("--type slsaprovenance"), 4)
+        self.assertIn("refusing to overwrite immutable index", promote)
+        self.assertLess(
+            promote.index("name: Generate and attest candidate evidence"),
+            promote.index("name: Promote verified artifacts by digest"),
+        )
+        self.assertLess(
+            promote.index("cosign sign --yes --key /tmp/cosign.key \"$image\""),
+            promote.index("crane copy \"$source\" \"$immutable_ref\""),
+        )
         for required in (
             "trivy image",
             "syft \"$image\"",
             "cosign sign",
             "cosign attest",
+            "cosign verify-attestation",
             "crane copy",
             "validate_manifest.py",
             "unqualified child",
