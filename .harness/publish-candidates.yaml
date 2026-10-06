@@ -1,11 +1,12 @@
 pipeline:
-  name: qTest Publisher - Publish Platform Candidates
-  identifier: qtest_publisher_publish_candidates
+  name: qTest Publisher - Publish Platform Candidates-dm
+  identifier: qtest_publisher_publish_candidates_dm
   projectIdentifier: Drone_Plugins
   orgIdentifier: default
   properties:
     ci:
       codebase:
+        connectorRef: dmgitcon
         repoName: qtest-publisher
         build: <+input>
   variables:
@@ -31,12 +32,12 @@ pipeline:
                   name: Unit race vet and cross-build
                   identifier: unit_race_vet_cross_build
                   spec:
-                    connectorRef: account.harnessImage
+                    connectorRef: <+pipeline.variables.dockerConnector>
                     image: docker.io/library/golang:1.25.13-alpine@sha256:fec9672136e7ccfa4f6cf59177987de3d8ee9b14953b6ea5485dbd08bf7b4aed
                     shell: Sh
                     command: |
                       set -eu
-                      apk add --no-cache build-base
+                      apk add --no-cache build-base git
                       git cat-file -e 816464df142eec022158fe7685772d8eabd65b82^{commit}
                       git diff --exit-code 816464df142eec022158fe7685772d8eabd65b82 -- go.mod main.go plugin
                       test "$(go env GOVERSION)" = go1.25.13
@@ -54,7 +55,7 @@ pipeline:
                   name: Secret scan
                   identifier: secret_scan
                   spec:
-                    connectorRef: account.harnessImage
+                    connectorRef: <+pipeline.variables.dockerConnector>
                     image: zricethezav/gitleaks:v8.28.0
                     shell: Sh
                     command: gitleaks detect --source . --no-git --redact
@@ -63,6 +64,9 @@ pipeline:
             name: Publish Linux AMD64
             identifier: publish_linux_amd64
             type: CI
+            when:
+              pipelineStatus: Success
+              condition: <+codebase.build.type> == "tag"
             spec:
               cloneCodebase: true
               slsa_provenance: {enabled: true}
@@ -75,7 +79,7 @@ pipeline:
                       name: Build static binary
                       identifier: build_static_binary
                       spec:
-                        connectorRef: account.harnessImage
+                        connectorRef: <+pipeline.variables.dockerConnector>
                         image: docker.io/library/golang:1.25.13-alpine@sha256:fec9672136e7ccfa4f6cf59177987de3d8ee9b14953b6ea5485dbd08bf7b4aed
                         shell: Sh
                         command: |
@@ -98,6 +102,9 @@ pipeline:
             name: Publish Linux ARM64
             identifier: publish_linux_arm64
             type: CI
+            when:
+              pipelineStatus: Success
+              condition: <+codebase.build.type> == "tag"
             spec:
               cloneCodebase: true
               slsa_provenance: {enabled: true}
@@ -110,7 +117,7 @@ pipeline:
                       name: Build static binary
                       identifier: build_static_binary
                       spec:
-                        connectorRef: account.harnessImage
+                        connectorRef: <+pipeline.variables.dockerConnector>
                         image: docker.io/library/golang:1.25.13-alpine@sha256:0ae9afcc66ea58a852d29541782ad911f6151e073355e8eb0f10f91f6d97869f
                         shell: Sh
                         command: |
@@ -133,6 +140,9 @@ pipeline:
             name: Publish Windows LTSC 2019
             identifier: publish_windows_ltsc2019
             type: CI
+            when:
+              pipelineStatus: Success
+              condition: <+codebase.build.type> == "tag"
             spec:
               cloneCodebase: true
               slsa_provenance: {enabled: true}
@@ -153,7 +163,7 @@ pipeline:
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         image: mcr.microsoft.com/windows/servercore@sha256:bea74690d808bba3e6b0d4ba4c599305aea1f66c875f133f1e75855841dcb1d5
-                        shell: PowerShell
+                        shell: Powershell
                         command: |
                           $ErrorActionPreference = 'Stop'
                           Invoke-WebRequest -UseBasicParsing -Uri '<+pipeline.variables.goWindowsUrl>' -OutFile go.zip
@@ -177,6 +187,9 @@ pipeline:
             name: Publish Windows LTSC 2022
             identifier: publish_windows_ltsc2022
             type: CI
+            when:
+              pipelineStatus: Success
+              condition: <+codebase.build.type> == "tag"
             spec:
               cloneCodebase: true
               slsa_provenance: {enabled: true}
@@ -197,7 +210,7 @@ pipeline:
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         image: mcr.microsoft.com/windows/servercore@sha256:e10503b9a4f7faafa30aa0f5d0e8e7f7ca30a4496b3b87d61178b4d7c6815fb5
-                        shell: PowerShell
+                        shell: Powershell
                         command: |
                           $ErrorActionPreference = 'Stop'
                           Invoke-WebRequest -UseBasicParsing -Uri '<+pipeline.variables.goWindowsUrl>' -OutFile go.zip
@@ -221,6 +234,9 @@ pipeline:
             name: Publish Windows LTSC 2025
             identifier: publish_windows_ltsc2025
             type: CI
+            when:
+              pipelineStatus: Success
+              condition: <+codebase.build.type> == "tag"
             spec:
               cloneCodebase: true
               slsa_provenance: {enabled: true}
@@ -241,7 +257,7 @@ pipeline:
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         image: mcr.microsoft.com/windows/servercore@sha256:22505496dd4229dba63453ba0c6dc31c06fd3e11810e5b8e429aa6b16dab2457
-                        shell: PowerShell
+                        shell: Powershell
                         command: |
                           $ErrorActionPreference = 'Stop'
                           Invoke-WebRequest -UseBasicParsing -Uri '<+pipeline.variables.goWindowsUrl>' -OutFile go.zip

@@ -1,6 +1,6 @@
 pipeline:
-  name: qTest Publisher - Secure Promotion
-  identifier: qtest_publisher_secure_promote
+  name: qTest Publisher - Secure Promotion-dm
+  identifier: qtest_publisher_secure_promote_dm
   projectIdentifier: Drone_Plugins
   orgIdentifier: default
   properties:
@@ -31,7 +31,7 @@ pipeline:
                   name: Validate qualified digest lock
                   identifier: validate_qualified_digest_lock
                   spec:
-                    connectorRef: account.harnessImage
+                    connectorRef: <+pipeline.variables.dockerConnector>
                     image: python:3.13.7-alpine
                     shell: Sh
                     envVariables:
@@ -69,7 +69,7 @@ pipeline:
                   identifier: vulnerability_license_gates
                   timeout: 60m
                   spec:
-                    connectorRef: account.harnessImage
+                    connectorRef: <+pipeline.variables.dockerConnector>
                     image: python:3.13.7-alpine
                     shell: Sh
                     command: |
@@ -110,7 +110,7 @@ pipeline:
                   identifier: copy_children_complete_index
                   timeout: 60m
                   spec:
-                    connectorRef: account.harnessImage
+                    connectorRef: <+pipeline.variables.dockerConnector>
                     image: python:3.13.7-alpine
                     shell: Sh
                     envVariables:
@@ -173,7 +173,7 @@ pipeline:
                   identifier: generate_sboms_sign_provenance
                   timeout: 60m
                   spec:
-                    connectorRef: account.harnessImage
+                    connectorRef: <+pipeline.variables.dockerConnector>
                     image: python:3.13.7-alpine
                     shell: Sh
                     envVariables:

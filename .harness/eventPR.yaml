@@ -1,0 +1,14 @@
+inputSet:
+  name: qTest Publisher PR-dm
+  identifier: qtest_publisher_pr_dm
+  orgIdentifier: default
+  projectIdentifier: Drone_Plugins
+  pipeline:
+    identifier: qtest_publisher_publish_candidates_dm
+    properties:
+      ci:
+        codebase:
+          build:
+            type: PR
+            spec:
+              number: <+trigger.prNumber>

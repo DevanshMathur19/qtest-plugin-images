@@ -1,6 +1,6 @@
 pipeline:
-  name: qTest Publisher - KubernetesDirect Qualification
-  identifier: qtest_publisher_qualify_kubernetes
+  name: qTest Publisher - KubernetesDirect Qualification-dm
+  identifier: qtest_publisher_qualify_kubernetes_dm
   projectIdentifier: Drone_Plugins
   orgIdentifier: default
   properties:
@@ -75,7 +75,7 @@ pipeline:
                       name: Assert running image digest
                       identifier: assert_running_image_digest
                       spec:
-                        connectorRef: account.harnessImage
+                        connectorRef: <+pipeline.variables.dockerConnector>
                         image: python:3.13.7-alpine
                         shell: Sh
                         envVariables:
@@ -136,7 +136,7 @@ pipeline:
                       name: Assert running image digest
                       identifier: assert_running_image_digest
                       spec:
-                        connectorRef: account.harnessImage
+                        connectorRef: <+pipeline.variables.dockerConnector>
                         image: python:3.13.7-alpine
                         shell: Sh
                         envVariables:
@@ -202,7 +202,7 @@ pipeline:
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         image: mcr.microsoft.com/windows/servercore@sha256:bea74690d808bba3e6b0d4ba4c599305aea1f66c875f133f1e75855841dcb1d5
-                        shell: PowerShell
+                        shell: Powershell
                         envVariables:
                           CANDIDATE_IMAGE: <+pipeline.variables.windows2019Candidate>
                           POD_NAMESPACE: <+pipeline.variables.namespace>
@@ -267,7 +267,7 @@ pipeline:
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         image: mcr.microsoft.com/windows/servercore@sha256:e10503b9a4f7faafa30aa0f5d0e8e7f7ca30a4496b3b87d61178b4d7c6815fb5
-                        shell: PowerShell
+                        shell: Powershell
                         envVariables:
                           CANDIDATE_IMAGE: <+pipeline.variables.windows2022Candidate>
                           POD_NAMESPACE: <+pipeline.variables.namespace>
@@ -332,7 +332,7 @@ pipeline:
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         image: mcr.microsoft.com/windows/servercore@sha256:22505496dd4229dba63453ba0c6dc31c06fd3e11810e5b8e429aa6b16dab2457
-                        shell: PowerShell
+                        shell: Powershell
                         envVariables:
                           CANDIDATE_IMAGE: <+pipeline.variables.windows2025Candidate>
                           POD_NAMESPACE: <+pipeline.variables.namespace>
