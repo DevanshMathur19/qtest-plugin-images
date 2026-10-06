@@ -46,11 +46,33 @@ overwritten:
 The corrected `r2` topology uses Harness Cloud for LTSC 2022 and matching
 controlled VM pools for LTSC 2019 and LTSC 2025.
 
+## Candidate publication evidence
+
+The initial `r2` execution published four platforms. LTSC 2019 was completed
+by a failed-stage retry after the live build-step timeout was corrected from
+30 to 60 minutes:
+
+- Initial execution:
+  `https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_publish_candidates_dm/deployments/5eND5oqWRS6ZZn8eJxaUfw/pipeline`
+- LTSC 2019 completion:
+  `https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_publish_candidates_dm/deployments/pgmIoXVPTd2X1dHj9Lfn3g/pipeline`
+
+Published immutable children:
+
+- Linux AMD64:
+  `sha256:f0e32d7691c4cc4d1e314a97328c7673f432ecd88c2c3df55b768352078d3bcf`
+- Linux ARM64:
+  `sha256:0f76a046f9309e00f69f1e833f742be01fd23a12ca8d9d661d92f977731c68d4`
+- Windows LTSC 2019:
+  `sha256:05899b3f8631e1677cdab2c69baee878c4f58f1daa7af88dacf9e5b1b92a2ec5`
+- Windows LTSC 2022:
+  `sha256:e11d90125587075c91e1749ad072bd6442b7743e690a3d47d9558f4560ce9cf3`
+- Windows LTSC 2025:
+  `sha256:062251cd72afa803f6be6b7745329b5e4199f1841d39e0df222fcb1bf501a0f8`
+
 ## Outstanding release evidence
 
 - Harness-owned qTest sandbox URL, secret, disposable project, and test cycle
-- Five immutable `r2` candidate registry digests
-- Matching-worker Windows image builds
 - Five-platform KubernetesDirect qualification execution
 - Registry vulnerability/license reports
 - SPDX SBOMs, signatures, attestations, and SLSA provenance
