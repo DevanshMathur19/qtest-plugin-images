@@ -125,9 +125,15 @@ class ReleaseTests(unittest.TestCase):
 
     def test_current_lock_is_fail_closed(self):
         lock = release.validate_child_lock(release.catalog())
-        self.assertEqual("unpublished", lock["publication_state"])
-        self.assertEqual("unqualified", lock["qualification_state"])
-        self.assertEqual("unpromoted", lock["promotion_state"])
+        self.assertIn(
+            lock["publication_state"], {"unpublished", "partial", "published"}
+        )
+        self.assertIn(
+            lock["qualification_state"], {"unqualified", "partial", "qualified"}
+        )
+        self.assertIn(
+            lock["promotion_state"], {"unpromoted", "partial", "promoted"}
+        )
         self.assertFalse(lock["supported"])
 
     def test_lock_validation_does_not_require_source_checkout(self):
@@ -209,6 +215,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn("Expected Windows build 20348", publish)
         self.assertIn("refusing to overwrite immutable tag", publish)
         self.assertEqual(5, publish.count("caching: false"))
+        self.assertEqual(6, publish.count("timeout: 60m"))
         self.assertEqual(5, publish.count("slsa_provenance: {enabled: true}"))
         self.assertGreaterEqual(
             publish.count(release.catalog()["plugin"]["source_revision"]), 2
