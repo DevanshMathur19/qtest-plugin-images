@@ -85,6 +85,22 @@ Harness reports `IgnoreFailed` because each platform deliberately runs one
 connection-failure test with an ignore failure strategy. No platform stage
 failed, and all real sandbox publication and digest-assertion steps completed.
 
+## qTest Manager UI verification
+
+The qTest Manager UI was inspected after qualification and shows all five
+platform suites under `qTest Publisher RC2 Qualification`:
+
+- Linux AMD64, Windows LTSC 2019, and Windows LTSC 2025 use method identity.
+  Each suite contains four executed runs: one passed, two failed, and one
+  incomplete/skipped, matching the synthetic JUnit fixture.
+- Linux ARM64 and Windows LTSC 2022 use class identity. Each suite contains one
+  consolidated `io.harness.qtest.PublisherContract` run. Its failed status is
+  expected because the grouped methods include assertion-failure and error
+  cases.
+
+This confirms the accepted queue jobs were rendered in the configured test
+cycle with the expected suite hierarchy, identity modes, and status mapping.
+
 ## Security and license evidence
 
 The Trivy `0.67.2` gate summary is recorded under
