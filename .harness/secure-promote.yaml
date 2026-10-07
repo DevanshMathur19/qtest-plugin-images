@@ -11,8 +11,6 @@ pipeline:
         build: <+input>
   variables:
     - {name: dockerConnector, type: String, value: dmdockerconn}
-    - {name: dockerUsername, type: String, value: <+input>}
-    - {name: dockerPassword, type: Secret, value: <+input>}
     - {name: qualificationEvidence, type: String, value: <+input>}
   stages:
     - stage:
@@ -113,8 +111,8 @@ pipeline:
                     image: docker.io/library/python:3.13.7-alpine@sha256:9ba6d8cbebf0fb6546ae71f2a1c14f6ffd2fdab83af7fa5669734ef30ad48844
                     shell: Sh
                     envVariables:
-                      DOCKER_USERNAME: <+pipeline.variables.dockerUsername>
-                      DOCKER_PASSWORD: <+pipeline.variables.dockerPassword>
+                      DOCKER_USERNAME: harnesscie
+                      DOCKER_PASSWORD: <+secrets.getValue("Harness_Dockerhub_PAT")>
                     command: |
                       set -eu
                       apk add --no-cache ca-certificates curl tar

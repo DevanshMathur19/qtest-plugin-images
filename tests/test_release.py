@@ -271,6 +271,11 @@ class ReleaseTests(unittest.TestCase):
             promote.index("crane auth login index.docker.io"),
             promote.index("crane copy \"$source\" \"$immutable_ref\""),
         )
+        self.assertIn("DOCKER_USERNAME: harnesscie", promote)
+        self.assertIn(
+            'DOCKER_PASSWORD: <+secrets.getValue("Harness_Dockerhub_PAT")>',
+            promote,
+        )
         for required in (
             "trivy image",
             "crane copy",
