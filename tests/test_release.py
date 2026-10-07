@@ -287,6 +287,20 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn(
             "--exit-code 1 --severity CRITICAL --scanners license", promote
         )
+        attest = promote[
+            promote.index("name: Generate and attest candidate evidence"):
+            promote.index("name: Promote verified artifacts by digest")
+        ]
+        self.assertIn(
+            "DOCKER_USERNAME: <+pipeline.variables.dockerUsername>", attest
+        )
+        self.assertIn(
+            "DOCKER_PASSWORD: <+pipeline.variables.dockerPassword>", attest
+        )
+        self.assertLess(
+            attest.index("crane auth login index.docker.io"),
+            attest.index('cosign sign --yes --key /tmp/cosign.key "$image"'),
+        )
         self.assertNotIn(":latest", promote)
 
     def test_qualification_assets_are_present(self):

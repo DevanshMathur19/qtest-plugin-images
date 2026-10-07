@@ -105,12 +105,23 @@ pipeline:
                     image: docker.io/library/python:3.13.7-alpine@sha256:9ba6d8cbebf0fb6546ae71f2a1c14f6ffd2fdab83af7fa5669734ef30ad48844
                     shell: Sh
                     envVariables:
+                      DOCKER_USERNAME: <+pipeline.variables.dockerUsername>
+                      DOCKER_PASSWORD: <+pipeline.variables.dockerPassword>
                       COSIGN_PRIVATE_KEY: <+pipeline.variables.cosignPrivateKey>
                       COSIGN_PASSWORD: <+pipeline.variables.cosignPassword>
                       QUALIFICATION_EVIDENCE: <+pipeline.variables.qualificationEvidence>
                     command: |
                       set -eu
                       apk add --no-cache ca-certificates curl jq tar
+                      crane_version=v0.20.6
+                      crane_archive=go-containerregistry_Linux_x86_64.tar.gz
+                      curl -fsSLO "https://github.com/google/go-containerregistry/releases/download/${crane_version}/${crane_archive}"
+                      curl -fsSLO "https://github.com/google/go-containerregistry/releases/download/${crane_version}/checksums.txt"
+                      grep " ${crane_archive}$" checksums.txt | sha256sum -c -
+                      tar xzf "$crane_archive" crane
+                      install crane /usr/local/bin/crane
+                      rm -f "$crane_archive" checksums.txt crane
+                      crane auth login index.docker.io -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
                       curl -fsSLO https://github.com/anchore/syft/releases/download/v1.33.0/syft_1.33.0_linux_amd64.tar.gz
                       curl -fsSLO https://github.com/anchore/syft/releases/download/v1.33.0/checksums.txt
                       grep ' syft_1.33.0_linux_amd64.tar.gz$' checksums.txt | sha256sum -c -
