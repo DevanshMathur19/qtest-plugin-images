@@ -70,10 +70,23 @@ Published immutable children:
 - Windows LTSC 2025:
   `sha256:062251cd72afa803f6be6b7745329b5e4199f1841d39e0df222fcb1bf501a0f8`
 
+## KubernetesDirect qualification evidence
+
+All five immutable children completed the empty-result contract, expected
+operational-failure path, real qTest sandbox publication, and running-image
+digest assertion:
+
+- Qualification execution:
+  `https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/jDe0nOZ2T4mMQlPyrhBXqA/pipeline`
+- qTest project: `31925`
+- qTest cycle: `1053723`
+
+Harness reports `IgnoreFailed` because each platform deliberately runs one
+connection-failure test with an ignore failure strategy. No platform stage
+failed, and all real sandbox publication and digest-assertion steps completed.
+
 ## Outstanding release evidence
 
-- Harness-owned qTest sandbox URL, secret, disposable project, and test cycle
-- Five-platform KubernetesDirect qualification execution
 - Registry vulnerability/license reports
 - SPDX SBOMs, signatures, attestations, and SLSA provenance
 - Complete production manifest digest and promotion execution
