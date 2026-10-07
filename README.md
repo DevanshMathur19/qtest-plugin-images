@@ -51,9 +51,13 @@ cross-compilation, or a candidate build is not a support claim.
    LTSC 2019/2022/2025. Every stage asserts the running image ID.
 4. Record each successful stage with `scripts/release.py record-qualified`.
 5. `.harness/secure-promote.yaml` blocks on the complete qualified lock, runs
-   vulnerability and license gates, copies children by digest, validates the
-   five-platform index, generates SPDX SBOMs, and signs images and
-   attestations.
+   vulnerability and license gates, copies children by digest without
+   rebuilding, and validates the five-platform index.
+
+Promotion is a controlled-adoption milestone and does not set `supported:
+true`. SBOM, signature, provenance, and final support approval remain explicit
+post-promotion gates, matching the process used by the other delivered image
+families.
 
 The qualification pipeline requires a Harness-owned qTest sandbox URL, bearer
 token, disposable project ID, and test-cycle ID as runtime inputs. No qTest

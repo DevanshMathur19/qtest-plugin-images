@@ -262,23 +262,17 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn("node.kubernetes.io/windows-build: \"10.0.26100\"", qualify)
 
         self.assertIn("connectorRef: dmgitcon", promote)
-        self.assertIn("type slsaprovenance", promote)
-        self.assertGreaterEqual(promote.count("--type slsaprovenance"), 4)
         self.assertIn("refusing to overwrite immutable index", promote)
         self.assertLess(
-            promote.index("name: Generate and attest candidate evidence"),
+            promote.index("name: Vulnerability and license gates"),
             promote.index("name: Promote verified artifacts by digest"),
         )
         self.assertLess(
-            promote.index("cosign sign --yes --key /tmp/cosign.key \"$image\""),
+            promote.index("crane auth login index.docker.io"),
             promote.index("crane copy \"$source\" \"$immutable_ref\""),
         )
         for required in (
             "trivy image",
-            "syft \"$image\"",
-            "cosign sign",
-            "cosign attest",
-            "cosign verify-attestation",
             "crane copy",
             "validate_manifest.py",
             "unqualified child",
@@ -287,20 +281,8 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn(
             "--exit-code 1 --severity CRITICAL --scanners license", promote
         )
-        attest = promote[
-            promote.index("name: Generate and attest candidate evidence"):
-            promote.index("name: Promote verified artifacts by digest")
-        ]
-        self.assertIn(
-            "DOCKER_USERNAME: <+pipeline.variables.dockerUsername>", attest
-        )
-        self.assertIn(
-            "DOCKER_PASSWORD: <+pipeline.variables.dockerPassword>", attest
-        )
-        self.assertLess(
-            attest.index("crane auth login index.docker.io"),
-            attest.index('cosign sign --yes --key /tmp/cosign.key "$image"'),
-        )
+        self.assertNotIn("cosign", promote)
+        self.assertNotIn("syft", promote)
         self.assertNotIn(":latest", promote)
 
     def test_qualification_assets_are_present(self):

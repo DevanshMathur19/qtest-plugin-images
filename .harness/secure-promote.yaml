@@ -1,5 +1,5 @@
 pipeline:
-  name: qTest Publisher - Secure Promotion-dm
+  name: qTest Publisher - Digest Promotion-dm
   identifier: qtest_publisher_secure_promote_dm
   projectIdentifier: Drone_Plugins
   orgIdentifier: default
@@ -13,8 +13,6 @@ pipeline:
     - {name: dockerConnector, type: String, value: dmdockerconn}
     - {name: dockerUsername, type: String, value: <+input>}
     - {name: dockerPassword, type: Secret, value: <+input>}
-    - {name: cosignPrivateKey, type: Secret, value: <+input>}
-    - {name: cosignPassword, type: Secret, value: <+input>}
     - {name: qualificationEvidence, type: String, value: <+input>}
   stages:
     - stage:
@@ -95,96 +93,9 @@ pipeline:
                         trivy image --exit-code 1 --severity CRITICAL --scanners license \
                           --license-full "$image"
                       done </tmp/candidates
-              - step:
-                  type: Run
-                  name: Generate and attest candidate evidence
-                  identifier: attest_candidate_evidence
-                  timeout: 60m
-                  spec:
-                    connectorRef: <+pipeline.variables.dockerConnector>
-                    image: docker.io/library/python:3.13.7-alpine@sha256:9ba6d8cbebf0fb6546ae71f2a1c14f6ffd2fdab83af7fa5669734ef30ad48844
-                    shell: Sh
-                    envVariables:
-                      DOCKER_USERNAME: <+pipeline.variables.dockerUsername>
-                      DOCKER_PASSWORD: <+pipeline.variables.dockerPassword>
-                      COSIGN_PRIVATE_KEY: <+pipeline.variables.cosignPrivateKey>
-                      COSIGN_PASSWORD: <+pipeline.variables.cosignPassword>
-                      QUALIFICATION_EVIDENCE: <+pipeline.variables.qualificationEvidence>
-                    command: |
-                      set -eu
-                      apk add --no-cache ca-certificates curl jq tar
-                      crane_version=v0.20.6
-                      crane_archive=go-containerregistry_Linux_x86_64.tar.gz
-                      curl -fsSLO "https://github.com/google/go-containerregistry/releases/download/${crane_version}/${crane_archive}"
-                      curl -fsSLO "https://github.com/google/go-containerregistry/releases/download/${crane_version}/checksums.txt"
-                      grep " ${crane_archive}$" checksums.txt | sha256sum -c -
-                      tar xzf "$crane_archive" crane
-                      install crane /usr/local/bin/crane
-                      rm -f "$crane_archive" checksums.txt crane
-                      crane auth login index.docker.io -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
-                      curl -fsSLO https://github.com/anchore/syft/releases/download/v1.33.0/syft_1.33.0_linux_amd64.tar.gz
-                      curl -fsSLO https://github.com/anchore/syft/releases/download/v1.33.0/checksums.txt
-                      grep ' syft_1.33.0_linux_amd64.tar.gz$' checksums.txt | sha256sum -c -
-                      tar xzf syft_1.33.0_linux_amd64.tar.gz syft
-                      install syft /usr/local/bin/syft
-                      curl -fsSLO https://github.com/sigstore/cosign/releases/download/v2.6.0/cosign-linux-amd64
-                      curl -fsSLo cosign_checksums.txt https://github.com/sigstore/cosign/releases/download/v2.6.0/cosign_checksums.txt
-                      grep ' cosign-linux-amd64$' cosign_checksums.txt | sha256sum -c -
-                      install cosign-linux-amd64 /usr/local/bin/cosign
-                      printf '%s' "$COSIGN_PRIVATE_KEY" >/tmp/cosign.key
-                      chmod 600 /tmp/cosign.key
-                      cosign public-key --key /tmp/cosign.key >/tmp/cosign.pub
-                      mkdir -p evidence/release/sbom evidence/release/provenance
-                      python3 - <<'PY' >/tmp/candidate-refs
-                      import json
-                      import os
-                      catalog = json.load(open("catalog/versions.yaml"))
-                      lock = json.load(open("locks/platform-child-digests.json"))
-                      for platform, child in lock["children"].items():
-                          image = f"docker.io/{lock['repository']}@{child['digest']}"
-                          predicate = {
-                              "buildDefinition": {
-                                  "buildType": "https://developer.harness.io/docs/continuous-integration",
-                                  "externalParameters": {
-                                      "platform": platform,
-                                      "immutableTag": child["tag"],
-                                  },
-                                  "internalParameters": {},
-                                      "resolvedDependencies": [{
-                                          "uri": catalog["plugin"]["source_url"],
-                                          "digest": {
-                                              "gitCommit": catalog["plugin"]["source_revision"],
-                                          },
-                                      }],
-                              },
-                              "runDetails": {
-                                  "builder": {"id": "https://app.harness.io/"},
-                                  "metadata": {
-                                      "invocationId": child["evidence"]["publication"],
-                                      "qualification": os.environ["QUALIFICATION_EVIDENCE"],
-                                  },
-                              },
-                          }
-                          path = f"evidence/release/provenance/{platform}.json"
-                          with open(path, "w") as output:
-                              json.dump(predicate, output, sort_keys=True)
-                          print(f"{platform}\t{image}")
-                      PY
-                      while IFS="$(printf '\t')" read -r platform image; do
-                        syft "$image" -o spdx-json="evidence/release/sbom/${platform}.spdx.json"
-                        cosign sign --yes --key /tmp/cosign.key "$image"
-                        cosign attest --yes --key /tmp/cosign.key \
-                          --type spdxjson --predicate "evidence/release/sbom/${platform}.spdx.json" "$image"
-                        cosign attest --yes --key /tmp/cosign.key \
-                          --type slsaprovenance --predicate "evidence/release/provenance/${platform}.json" "$image"
-                        cosign verify --key /tmp/cosign.pub "$image"
-                        cosign verify-attestation --key /tmp/cosign.pub --type spdxjson "$image"
-                        cosign verify-attestation --key /tmp/cosign.pub --type slsaprovenance "$image"
-                      done </tmp/candidate-refs
-                      rm -f /tmp/cosign.key /tmp/cosign.pub
     - stage:
-        name: Promote by digest and attest
-        identifier: promote_by_digest_and_attest
+        name: Promote qualified digests
+        identifier: promote_qualified_digests
         type: CI
         spec:
           cloneCodebase: true
@@ -204,18 +115,9 @@ pipeline:
                     envVariables:
                       DOCKER_USERNAME: <+pipeline.variables.dockerUsername>
                       DOCKER_PASSWORD: <+pipeline.variables.dockerPassword>
-                      COSIGN_PRIVATE_KEY: <+pipeline.variables.cosignPrivateKey>
-                      COSIGN_PASSWORD: <+pipeline.variables.cosignPassword>
-                      QUALIFICATION_EVIDENCE: <+pipeline.variables.qualificationEvidence>
                     command: |
                       set -eu
                       apk add --no-cache ca-certificates curl tar
-                      curl -fsSLO https://github.com/anchore/syft/releases/download/v1.33.0/syft_1.33.0_linux_amd64.tar.gz
-                      curl -fsSLO https://github.com/anchore/syft/releases/download/v1.33.0/checksums.txt
-                      grep ' syft_1.33.0_linux_amd64.tar.gz$' checksums.txt | sha256sum -c -
-                      tar xzf syft_1.33.0_linux_amd64.tar.gz syft
-                      install syft /usr/local/bin/syft
-                      rm -f syft_1.33.0_linux_amd64.tar.gz checksums.txt syft
                       crane_version=v0.20.6
                       crane_archive=go-containerregistry_Linux_x86_64.tar.gz
                       curl -fsSLO "https://github.com/google/go-containerregistry/releases/download/${crane_version}/${crane_archive}"
@@ -224,20 +126,9 @@ pipeline:
                       tar xzf "$crane_archive" crane
                       install crane /usr/local/bin/crane
                       rm -f "$crane_archive" checksums.txt crane
-                      curl -fsSLO https://github.com/sigstore/cosign/releases/download/v2.6.0/cosign-linux-amd64
-                      curl -fsSLo cosign_checksums.txt https://github.com/sigstore/cosign/releases/download/v2.6.0/cosign_checksums.txt
-                      grep ' cosign-linux-amd64$' cosign_checksums.txt | sha256sum -c -
-                      install cosign-linux-amd64 /usr/local/bin/cosign
-                      printf '%s' "$COSIGN_PRIVATE_KEY" >/tmp/cosign.key
-                      chmod 600 /tmp/cosign.key
-                      cosign public-key --key /tmp/cosign.key >/tmp/cosign.pub
                       crane auth login index.docker.io -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
-                      mkdir -p /tmp/sbom /tmp/provenance
                       python3 - <<'PY' >/tmp/promotions.tsv
-                      import json
-                      import os
                       import sys
-                      from pathlib import Path
                       sys.path.insert(0, "scripts")
                       import release
                       cat = release.catalog()
@@ -245,32 +136,6 @@ pipeline:
                       for platform, child in lock["children"].items():
                           if not child.get("qualified"):
                               raise SystemExit(f"unqualified child: {platform}")
-                          predicate = {
-                              "buildDefinition": {
-                                  "buildType": "https://developer.harness.io/docs/continuous-integration",
-                                  "externalParameters": {
-                                      "platform": platform,
-                                      "immutableTag": child["tag"],
-                                  },
-                                  "internalParameters": {},
-                                  "resolvedDependencies": [{
-                                      "uri": cat["plugin"]["source_url"],
-                                      "digest": {
-                                          "gitCommit": cat["plugin"]["source_revision"],
-                                      },
-                                  }],
-                              },
-                              "runDetails": {
-                                  "builder": {"id": "https://app.harness.io/"},
-                                  "metadata": {
-                                      "invocationId": child["evidence"]["publication"],
-                                      "qualification": os.environ["QUALIFICATION_EVIDENCE"],
-                                  },
-                              },
-                          }
-                          Path(f"/tmp/provenance/{platform}.json").write_text(
-                              json.dumps(predicate, sort_keys=True)
-                          )
                           print("\t".join([
                               platform, cat["repository"], child["digest"],
                               cat["production_repository"], child["tag"],
@@ -295,16 +160,6 @@ pipeline:
                         fi
                         [ -n "$existing" ] || crane copy "$source" "$immutable_ref"
                         [ "$(crane digest "$immutable_ref")" = "$digest" ]
-                        production="docker.io/${production_repo}@${digest}"
-                        syft "$production" -o spdx-json="/tmp/sbom/${platform}.spdx.json"
-                        cosign sign --yes --key /tmp/cosign.key "$production"
-                        cosign attest --yes --key /tmp/cosign.key \
-                          --type spdxjson --predicate "/tmp/sbom/${platform}.spdx.json" "$production"
-                        cosign attest --yes --key /tmp/cosign.key \
-                          --type slsaprovenance --predicate "/tmp/provenance/${platform}.json" "$production"
-                        cosign verify --key /tmp/cosign.pub "$production"
-                        cosign verify-attestation --key /tmp/cosign.pub --type spdxjson "$production"
-                        cosign verify-attestation --key /tmp/cosign.pub --type slsaprovenance "$production"
                         printf '%s\n' "$source" >>/tmp/candidate-children
                       done </tmp/promotions.tsv
                       set -- $(sed 's/^/-m /' /tmp/candidate-children)
@@ -317,8 +172,6 @@ pipeline:
                       python3 scripts/validate_manifest.py /tmp/index.json locks/platform-child-digests.json
                       manifestDigest=$(crane digest "$candidate_index")
                       test -n "$manifestDigest"
-                      cosign sign --yes --key /tmp/cosign.key "docker.io/${source_repo}@${manifestDigest}"
-                      cosign verify --key /tmp/cosign.pub "docker.io/${source_repo}@${manifestDigest}"
                       production_index="docker.io/${destination_repo}:${version}"
                       existing_production_index=$(crane digest "$production_index" 2>/dev/null || true)
                       if [ -n "$existing_production_index" ] && [ "$existing_production_index" != "$manifestDigest" ]; then
@@ -327,13 +180,10 @@ pipeline:
                       fi
                       [ -n "$existing_production_index" ] || crane copy "$candidate_index" "$production_index"
                       [ "$(crane digest "$production_index")" = "$manifestDigest" ]
-                      cosign sign --yes --key /tmp/cosign.key "docker.io/${destination_repo}@${manifestDigest}"
-                      cosign verify --key /tmp/cosign.pub "docker.io/${destination_repo}@${manifestDigest}"
                       while IFS="$(printf '\t')" read -r platform candidate_repo digest production_repo immutable moving; do
                         crane copy "docker.io/${production_repo}:${immutable}" "docker.io/${production_repo}:${moving}"
                         [ "$(crane digest "docker.io/${production_repo}:${moving}")" = "$digest" ]
                       done </tmp/promotions.tsv
-                      rm -f /tmp/cosign.key /tmp/cosign.pub
                       export manifestDigest
                     outputVariables:
                       - {name: manifestDigest, type: String, value: manifestDigest}
