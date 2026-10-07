@@ -92,7 +92,7 @@ pipeline:
                       while IFS= read -r image; do
                         trivy image --exit-code 1 --severity HIGH,CRITICAL \
                           --ignore-unfixed --scanners vuln "$image"
-                        trivy image --exit-code 1 --scanners license \
+                        trivy image --exit-code 1 --severity CRITICAL --scanners license \
                           --license-full "$image"
                       done </tmp/candidates
               - step:

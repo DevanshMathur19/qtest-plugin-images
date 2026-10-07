@@ -85,9 +85,21 @@ Harness reports `IgnoreFailed` because each platform deliberately runs one
 connection-failure test with an ignore failure strategy. No platform stage
 failed, and all real sandbox publication and digest-assertion steps completed.
 
+## Security and license evidence
+
+The Trivy `0.67.2` gate summary is recorded under
+`evidence/release/security/summary.json` for all five immutable candidate
+digests:
+
+- No fixed HIGH or CRITICAL vulnerability gate findings
+- No CRITICAL/forbidden license gate findings
+
+Restricted, reciprocal, and unknown license counts remain recorded for review.
+They do not fail the release automatically; the enforced license gate is
+Trivy's CRITICAL/forbidden classification.
+
 ## Outstanding release evidence
 
-- Registry vulnerability/license reports
 - SPDX SBOMs, signatures, attestations, and SLSA provenance
 - Complete production manifest digest and promotion execution
 

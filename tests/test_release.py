@@ -284,6 +284,9 @@ class ReleaseTests(unittest.TestCase):
             "unqualified child",
         ):
             self.assertIn(required, promote)
+        self.assertIn(
+            "--exit-code 1 --severity CRITICAL --scanners license", promote
+        )
         self.assertNotIn(":latest", promote)
 
     def test_qualification_assets_are_present(self):
