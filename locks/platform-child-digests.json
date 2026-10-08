@@ -4,7 +4,7 @@
   "production_repository": "harness/qtest-publisher",
   "publication_state": "published",
   "qualification_state": "qualified",
-  "promotion_state": "unpromoted",
+  "promotion_state": "promoted",
   "supported": false,
   "children": {
     "linux-amd64": {
@@ -13,12 +13,13 @@
       "tag": "1.0.0-linux-amd64-r2",
       "published": true,
       "qualified": true,
-      "promoted": false,
+      "promoted": true,
       "supported": false,
       "config_digest": "sha256:3d94e9908848fa8f1b85fb10118ce2587b5806805a95343ff78035e67839f6b9",
       "evidence": {
         "publication": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_publish_candidates_dm/deployments/5eND5oqWRS6ZZn8eJxaUfw/pipeline",
-        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/jDe0nOZ2T4mMQlPyrhBXqA/pipeline"
+        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/jDe0nOZ2T4mMQlPyrhBXqA/pipeline",
+        "promotion": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_secure_promote_dm/deployments/PVKD2jhqQp66uDKFRH1Jdw/pipeline"
       }
     },
     "linux-arm64": {
@@ -27,12 +28,13 @@
       "tag": "1.0.0-linux-arm64-r2",
       "published": true,
       "qualified": true,
-      "promoted": false,
+      "promoted": true,
       "supported": false,
       "config_digest": "sha256:07df24653171a0e0924117f44e684227d3677d25d5a0a48ba630063314142add",
       "evidence": {
         "publication": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_publish_candidates_dm/deployments/5eND5oqWRS6ZZn8eJxaUfw/pipeline",
-        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/jDe0nOZ2T4mMQlPyrhBXqA/pipeline"
+        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/jDe0nOZ2T4mMQlPyrhBXqA/pipeline",
+        "promotion": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_secure_promote_dm/deployments/PVKD2jhqQp66uDKFRH1Jdw/pipeline"
       }
     },
     "windows-amd64-ltsc2019": {
@@ -41,12 +43,13 @@
       "tag": "1.0.0-windows-ltsc2019-amd64-r2",
       "published": true,
       "qualified": true,
-      "promoted": false,
+      "promoted": true,
       "supported": false,
       "config_digest": "sha256:e5d47146e38b5d9c84cd6f07b4003e7d7f917d6eca366cd16aad66e9b4534987",
       "evidence": {
         "publication": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_publish_candidates_dm/deployments/pgmIoXVPTd2X1dHj9Lfn3g/pipeline",
-        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/jDe0nOZ2T4mMQlPyrhBXqA/pipeline"
+        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/jDe0nOZ2T4mMQlPyrhBXqA/pipeline",
+        "promotion": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_secure_promote_dm/deployments/PVKD2jhqQp66uDKFRH1Jdw/pipeline"
       }
     },
     "windows-amd64-ltsc2022": {
@@ -55,12 +58,13 @@
       "tag": "1.0.0-windows-ltsc2022-amd64-r2",
       "published": true,
       "qualified": true,
-      "promoted": false,
+      "promoted": true,
       "supported": false,
       "config_digest": "sha256:f54d68987e37a341ad062bbd253fd66f7b80b3a1ef3061f82d0ebd6297e2f29e",
       "evidence": {
         "publication": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_publish_candidates_dm/deployments/5eND5oqWRS6ZZn8eJxaUfw/pipeline",
-        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/jDe0nOZ2T4mMQlPyrhBXqA/pipeline"
+        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/jDe0nOZ2T4mMQlPyrhBXqA/pipeline",
+        "promotion": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_secure_promote_dm/deployments/PVKD2jhqQp66uDKFRH1Jdw/pipeline"
       }
     },
     "windows-amd64-ltsc2025": {
@@ -69,12 +73,13 @@
       "tag": "1.0.0-windows-ltsc2025-amd64-r2",
       "published": true,
       "qualified": true,
-      "promoted": false,
+      "promoted": true,
       "supported": false,
       "config_digest": "sha256:c936258b4c0c9561d1ab850e80e9e4210fdf4c515bd1333f59df034e3295cd13",
       "evidence": {
         "publication": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_publish_candidates_dm/deployments/5eND5oqWRS6ZZn8eJxaUfw/pipeline",
-        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/jDe0nOZ2T4mMQlPyrhBXqA/pipeline"
+        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/jDe0nOZ2T4mMQlPyrhBXqA/pipeline",
+        "promotion": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_secure_promote_dm/deployments/PVKD2jhqQp66uDKFRH1Jdw/pipeline"
       }
     }
   }

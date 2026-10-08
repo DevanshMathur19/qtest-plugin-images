@@ -245,7 +245,8 @@ class ReleaseTests(unittest.TestCase):
             qualify,
         )
         self.assertIn("name: Require five digest-pinned candidates", qualify)
-        self.assertIn("candidate does not match published digest lock", qualify)
+        self.assertIn("published/promoted", qualify)
+        self.assertIn("child[\"promoted\"]", qualify)
         self.assertIn("python3 scripts/release.py validate-lock", qualify)
         self.assertEqual(5, qualify.count("suite_name: qtest-qualification-"))
         self.assertEqual(5, qualify.count('reuse_suite: "true"'))

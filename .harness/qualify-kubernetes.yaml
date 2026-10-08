@@ -64,12 +64,21 @@ pipeline:
                       lock = json.load(open("locks/platform-child-digests.json"))
                       for platform, candidate in zip(platforms, candidates):
                           child = lock["children"][platform]
-                          expected = f"{lock['repository']}@{child['digest']}"
+                          expected_candidate = f"{lock['repository']}@{child['digest']}"
+                          expected_production = (
+                              f"{lock['production_repository']}@{child['digest']}"
+                          )
                           normalized = candidate.removeprefix("docker.io/")
-                          if not child["published"] or normalized != expected:
+                          candidate_matches = (
+                              child["published"] and normalized == expected_candidate
+                          )
+                          production_matches = (
+                              child["promoted"] and normalized == expected_production
+                          )
+                          if not candidate_matches and not production_matches:
                               raise SystemExit(
-                                  f"{platform} candidate does not match published digest lock: "
-                                  f"{normalized} != {expected}"
+                                  f"{platform} image does not match the published/promoted "
+                                  f"digest lock: {normalized}"
                               )
                       PY
     - parallel:
