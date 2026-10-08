@@ -262,7 +262,8 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn("node.kubernetes.io/windows-build: \"10.0.26100\"", qualify)
 
         self.assertIn("connectorRef: dmgitcon", promote)
-        self.assertIn("refusing to overwrite immutable index", promote)
+        self.assertIn('crane index append "$@" -t "$production_index"', promote)
+        self.assertNotIn("candidate_index", promote)
         self.assertLess(
             promote.index("name: Vulnerability and license gates"),
             promote.index("name: Promote verified artifacts by digest"),

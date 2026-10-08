@@ -143,11 +143,10 @@ pipeline:
                       python3 - <<'PY' >/tmp/index-data
                       import json
                       cat = json.load(open("catalog/versions.yaml"))
-                      print(cat["repository"], cat["production_repository"],
-                            cat["plugin"]["version"], cat["plugin"]["revision"])
+                      print(cat["production_repository"], cat["plugin"]["version"])
                       PY
-                      read -r source_repo destination_repo version revision </tmp/index-data
-                      : >/tmp/candidate-children
+                      read -r destination_repo version </tmp/index-data
+                      : >/tmp/production-children
                       while IFS="$(printf '\t')" read -r platform candidate_repo digest production_repo immutable moving; do
                         source="docker.io/${candidate_repo}@${digest}"
                         immutable_ref="docker.io/${production_repo}:${immutable}"
@@ -158,25 +157,18 @@ pipeline:
                         fi
                         [ -n "$existing" ] || crane copy "$source" "$immutable_ref"
                         [ "$(crane digest "$immutable_ref")" = "$digest" ]
-                        printf '%s\n' "$source" >>/tmp/candidate-children
+                        printf '%s\n' "$immutable_ref" >>/tmp/production-children
                       done </tmp/promotions.tsv
-                      set -- $(sed 's/^/-m /' /tmp/candidate-children)
-                      candidate_index="docker.io/${source_repo}:${version}-index-r${revision}"
-                      existing_candidate_index=$(crane digest "$candidate_index" 2>/dev/null || true)
-                      if [ -z "$existing_candidate_index" ]; then
-                        crane index append "$@" -t "$candidate_index"
-                      fi
-                      crane manifest "$candidate_index" >/tmp/index.json
-                      python3 scripts/validate_manifest.py /tmp/index.json locks/platform-child-digests.json
-                      manifestDigest=$(crane digest "$candidate_index")
-                      test -n "$manifestDigest"
+                      set -- $(sed 's/^/-m /' /tmp/production-children)
                       production_index="docker.io/${destination_repo}:${version}"
                       existing_production_index=$(crane digest "$production_index" 2>/dev/null || true)
-                      if [ -n "$existing_production_index" ] && [ "$existing_production_index" != "$manifestDigest" ]; then
-                        echo "refusing to overwrite immutable index $production_index" >&2
-                        exit 1
+                      if [ -z "$existing_production_index" ]; then
+                        crane index append "$@" -t "$production_index"
                       fi
-                      [ -n "$existing_production_index" ] || crane copy "$candidate_index" "$production_index"
+                      crane manifest "$production_index" >/tmp/index.json
+                      python3 scripts/validate_manifest.py /tmp/index.json locks/platform-child-digests.json
+                      manifestDigest=$(crane digest "$production_index")
+                      test -n "$manifestDigest"
                       [ "$(crane digest "$production_index")" = "$manifestDigest" ]
                       while IFS="$(printf '\t')" read -r platform candidate_repo digest production_repo immutable moving; do
                         crane copy "docker.io/${production_repo}:${immutable}" "docker.io/${production_repo}:${moving}"
