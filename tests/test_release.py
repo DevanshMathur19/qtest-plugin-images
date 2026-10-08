@@ -286,6 +286,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn(
             "--exit-code 1 --severity CRITICAL --scanners license", promote
         )
+        self.assertIn("version=v0.75.0", promote)
         self.assertNotIn("cosign", promote)
         self.assertNotIn("syft", promote)
         self.assertNotIn(":latest", promote)
