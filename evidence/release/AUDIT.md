@@ -1,6 +1,7 @@
 # qTest Publisher Release Audit
 
-Status: **development candidate — unsupported**
+Status: **promoted controlled-adoption release — customer UAT ready,
+unsupported**
 
 ## Source
 
@@ -114,11 +115,55 @@ Restricted, reciprocal, and unknown license counts remain recorded for review.
 They do not fail the release automatically; the enforced license gate is
 Trivy's CRITICAL/forbidden classification.
 
-## Outstanding release evidence
+The promotion execution reran the gates with Trivy `0.75.0` and passed before
+copying any production tags.
+
+## Production promotion and qualification
+
+The exact qualified child digests were copied without rebuilding to
+`harness/qtest-publisher`:
+
+- Multi-platform tag: `1.0.0`
+- Manifest digest:
+  `sha256:446928adf51b71dd99161b7217c3cc7e71d03eb2bd643588d9b56daf6ea4ef74`
+- Immutable child tags:
+  `1.0.0-linux-amd64-r2`, `1.0.0-linux-arm64-r2`,
+  `1.0.0-windows-ltsc2019-amd64-r2`,
+  `1.0.0-windows-ltsc2022-amd64-r2`, and
+  `1.0.0-windows-ltsc2025-amd64-r2`
+- Platform moving tags use the same names without `-r2`.
+- Promotion execution:
+  `https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_secure_promote_dm/deployments/PVKD2jhqQp66uDKFRH1Jdw/pipeline`
+
+All five production digest references then repeated the KubernetesDirect
+qualification journey. The assertions verified both the requested
+`harness/qtest-publisher@sha256:...` Pod image and the running content digest:
+
+- Production qualification execution:
+  `https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/TOjjgYlOQ5ivehxZ-2SdjQ/pipeline`
+
+The execution status is `IgnoreFailed` only because each platform includes the
+intentional ignored connection-failure contract.
+
+## Customer handoff
+
+- Customer guide:
+  `https://harness.atlassian.net/wiki/spaces/CI1/pages/24347541549`
+- Delivery-thread draft: `Dr0C7L2SANJ1` in `cs-elevance-health-devops`
+- Customer-facing image: `harness/qtest-publisher:1.0.0`
+- Handoff state: ready for customer UAT under controlled adoption
+
+## Deferred support gates
 
 - SPDX SBOMs, signatures, attestations, and SLSA provenance
-- Complete production manifest digest and promotion execution
+- Customer environment UAT and final support approval
 
-No customer credential or customer UAT input is required to implement the
-plugin. The Harness-owned sandbox and remote repositories are operational
-release prerequisites. Customer UAT starts only after promotion and delivery.
+These gates are intentionally post-promotion, matching the controlled-adoption
+process used for the previously delivered plugin images. Their deferral does
+not block customer UAT, but `supported` remains `false` until final support
+approval.
+
+No customer credential or customer UAT input was required to implement or
+qualify the plugin. The Harness-owned sandbox and production repository were
+operational release prerequisites. Customer UAT starts after this promotion
+and delivery handoff.
