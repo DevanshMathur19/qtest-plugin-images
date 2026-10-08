@@ -32,7 +32,21 @@ def main() -> None:
         url, headers={"Authorization": f"Bearer {token}", "Accept": "application/json"}
     )
     with urllib.request.urlopen(request, context=context, timeout=30) as response:
-        status = json.load(response)["status"]
+        pod_resource = json.load(response)
+    requested_images = [
+        item.get("image", "")
+        for item in pod_resource.get("spec", {}).get("containers", [])
+        + pod_resource.get("spec", {}).get("initContainers", [])
+    ]
+    normalized_candidate = candidate.removeprefix("docker.io/")
+    if not any(
+        image.removeprefix("docker.io/") == normalized_candidate
+        for image in requested_images
+    ):
+        raise SystemExit(
+            f"expected Pod image {candidate}; requested: {', '.join(requested_images)}"
+        )
+    status = pod_resource["status"]
     image_ids = [
         item.get("imageID", "")
         for item in status.get("containerStatuses", [])
@@ -42,7 +56,8 @@ def main() -> None:
         raise SystemExit(
             f"expected running imageID {expected}; observed: {', '.join(image_ids)}"
         )
-    print(f"Running imageID verified: {expected}")
+    print(f"Requested image verified: {candidate}")
+    print(f"Running digest verified: {expected}")
 
 
 if __name__ == "__main__":

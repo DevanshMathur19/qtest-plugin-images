@@ -35,14 +35,31 @@ if ($LASTEXITCODE -ne 0) {
     if ($matches.Count -ne 1) {
         throw "Could not identify the current Pod in namespace $namespace"
     }
-    $status = $matches[0].status
+    $podResource = $matches[0]
 } else {
-    $status = ($json | ConvertFrom-Json).status
+    $podResource = $json | ConvertFrom-Json
 }
 
+$requestedImages = @(
+    @($podResource.spec.containers) + @($podResource.spec.initContainers) |
+        Where-Object { $null -ne $_ } |
+        ForEach-Object { [string] $_.image }
+)
+$normalizedCandidate = $env:CANDIDATE_IMAGE -replace '^docker\.io/', ''
+$requestedMatch = @(
+    $requestedImages | Where-Object {
+        ($_ -replace '^docker\.io/', '') -eq $normalizedCandidate
+    }
+)
+if ($requestedMatch.Count -lt 1) {
+    throw "Expected Pod image $($env:CANDIDATE_IMAGE); requested: $($requestedImages -join ', ')"
+}
+
+$status = $podResource.status
 $imageIds = @($status.containerStatuses | ForEach-Object { [string] $_.imageID })
 $matching = @($imageIds | Where-Object { $_ -match "@$([regex]::Escape($expectedDigest))$" })
 if ($matching.Count -lt 1) {
     throw "Expected running imageID $expectedDigest; observed: $($imageIds -join ', ')"
 }
-Write-Output "Running imageID verified: $($matching -join ', ')"
+Write-Output "Requested image verified: $($env:CANDIDATE_IMAGE)"
+Write-Output "Running digest verified: $expectedDigest"

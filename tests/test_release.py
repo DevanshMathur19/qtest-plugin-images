@@ -294,8 +294,17 @@ class ReleaseTests(unittest.TestCase):
         self.assertNotIn(":latest", promote)
 
     def test_qualification_assets_are_present(self):
-        self.assertTrue((ROOT / "scripts" / "assert_kubernetes_image.py").is_file())
-        self.assertTrue((ROOT / "scripts" / "assert-kubernetes-image.ps1").is_file())
+        linux_assertion = (
+            ROOT / "scripts" / "assert_kubernetes_image.py"
+        ).read_text()
+        windows_assertion = (
+            ROOT / "scripts" / "assert-kubernetes-image.ps1"
+        ).read_text()
+        for assertion in (linux_assertion, windows_assertion):
+            self.assertIn("Requested image verified:", assertion)
+            self.assertIn("Running digest verified:", assertion)
+        self.assertIn('pod_resource.get("spec", {})', linux_assertion)
+        self.assertIn("$podResource.spec.containers", windows_assertion)
         fixture = ROOT / "tests" / "fixtures" / "junit" / "TEST-qtest-publisher.xml"
         self.assertIn("<failure", fixture.read_text())
         self.assertIn("<error", fixture.read_text())
