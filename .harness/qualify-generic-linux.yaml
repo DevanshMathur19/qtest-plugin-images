@@ -1,0 +1,89 @@
+pipeline:
+  name: qTest Publisher - Generic Tag Linux Qualification-dm
+  identifier: qtest_publisher_qualify_generic_linux_dm
+  projectIdentifier: Drone_Plugins
+  orgIdentifier: default
+  properties:
+    ci:
+      codebase:
+        connectorRef: dmgitcon
+        repoName: qtest-plugin-images
+        build: <+input>
+  variables:
+    - {name: dockerConnector, type: String, value: dmdockerconn}
+    - {name: namespace, type: String, value: cie-test}
+    - {name: candidateTag, type: String, value: <+input>}
+    - {name: qtestUrl, type: String, value: <+input>}
+    - {name: qtestToken, type: Secret, value: <+input>}
+    - {name: qtestProjectId, type: String, value: <+input>}
+    - {name: qtestCycleId, type: String, value: <+input>}
+  stages:
+    - parallel:
+        - stage:
+            name: Qualify generic tag on Linux AMD64
+            identifier: qualify_generic_linux_amd64
+            type: CI
+            spec:
+              cloneCodebase: true
+              platform: {os: Linux, arch: Amd64}
+              infrastructure:
+                type: KubernetesDirect
+                spec:
+                  connectorRef: gcopdmlinuxamd64
+                  namespace: <+pipeline.variables.namespace>
+                  nodeSelector: {kubernetes.io/arch: amd64}
+              execution:
+                steps:
+                  - step:
+                      type: Plugin
+                      name: Publish sandbox JUnit through generic tag
+                      identifier: publish_sandbox_junit_generic_tag
+                      timeout: 20m
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.candidateTag>
+                        settings:
+                          qtest_url: <+pipeline.variables.qtestUrl>
+                          bearer_token: <+pipeline.variables.qtestToken>
+                          project_id: <+pipeline.variables.qtestProjectId>
+                          destination_type: test-cycle
+                          destination_id: <+pipeline.variables.qtestCycleId>
+                          suite_name: qtest-qualification-generic-linux-amd64
+                          reuse_suite: "true"
+                          result_paths: tests/fixtures/junit/*.xml
+                          identity_mode: class
+        - stage:
+            name: Qualify generic tag on Linux ARM64
+            identifier: qualify_generic_linux_arm64
+            type: CI
+            spec:
+              cloneCodebase: true
+              platform: {os: Linux, arch: Arm64}
+              infrastructure:
+                type: KubernetesDirect
+                spec:
+                  connectorRef: gcopdmarm64
+                  namespace: <+pipeline.variables.namespace>
+                  nodeSelector: {kubernetes.io/arch: arm64}
+                  tolerations:
+                    - {effect: NoSchedule, key: kubernetes.io/arch, operator: Equal, value: arm64}
+              execution:
+                steps:
+                  - step:
+                      type: Plugin
+                      name: Publish sandbox JUnit through generic tag
+                      identifier: publish_sandbox_junit_generic_tag
+                      timeout: 20m
+                      spec:
+                        connectorRef: <+pipeline.variables.dockerConnector>
+                        image: <+pipeline.variables.candidateTag>
+                        settings:
+                          qtest_url: <+pipeline.variables.qtestUrl>
+                          bearer_token: <+pipeline.variables.qtestToken>
+                          project_id: <+pipeline.variables.qtestProjectId>
+                          destination_type: test-cycle
+                          destination_id: <+pipeline.variables.qtestCycleId>
+                          suite_name: qtest-qualification-generic-linux-arm64
+                          reuse_suite: "true"
+                          result_paths: tests/fixtures/junit/*.xml
+                          identity_mode: class

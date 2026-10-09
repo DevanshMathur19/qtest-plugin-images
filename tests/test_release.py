@@ -234,6 +234,9 @@ class ReleaseTests(unittest.TestCase):
         qualify_generic = (
             pipeline_root / "qualify-generic-windows.yaml"
         ).read_text()
+        qualify_generic_linux = (
+            pipeline_root / "qualify-generic-linux.yaml"
+        ).read_text()
         promote = (pipeline_root / "secure-promote.yaml").read_text()
 
         self.assertEqual(5, publish.count("type: BuildAndPushDockerRegistry"))
@@ -336,6 +339,28 @@ class ReleaseTests(unittest.TestCase):
                 qualify_generic,
             )
         self.assertNotIn(":latest", qualify_generic)
+
+        self.assertEqual(
+            2,
+            qualify_generic_linux.count(
+                "name: Publish sandbox JUnit through generic tag"
+            ),
+        )
+        self.assertEqual(
+            2,
+            qualify_generic_linux.count(
+                "image: <+pipeline.variables.candidateTag>"
+            ),
+        )
+        self.assertEqual(
+            2, qualify_generic_linux.count("type: KubernetesDirect")
+        )
+        self.assertIn("connectorRef: gcopdmlinuxamd64", qualify_generic_linux)
+        self.assertIn("connectorRef: gcopdmarm64", qualify_generic_linux)
+        self.assertNotIn("entrypoint:", qualify_generic_linux)
+        self.assertNotIn("unused.qtestnet.com", qualify_generic_linux)
+        self.assertNotIn("no-results/**/*.xml", qualify_generic_linux)
+        self.assertNotIn(":latest", qualify_generic_linux)
 
         self.assertIn("connectorRef: dmgitcon", promote)
         self.assertIn('crane index append "$@" -t "$production_index"', promote)
