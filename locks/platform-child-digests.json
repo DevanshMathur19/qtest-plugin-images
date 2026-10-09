@@ -10,7 +10,7 @@
     "linux-amd64": {
       "digest": null,
       "registry_compressed_size_bytes": 0,
-      "tag": "1.0.1-linux-amd64-r1",
+      "tag": "1.0.1-linux-amd64-r2",
       "published": false,
       "qualified": false,
       "promoted": false,
@@ -21,7 +21,7 @@
     "linux-arm64": {
       "digest": null,
       "registry_compressed_size_bytes": 0,
-      "tag": "1.0.1-linux-arm64-r1",
+      "tag": "1.0.1-linux-arm64-r2",
       "published": false,
       "qualified": false,
       "promoted": false,
@@ -32,7 +32,7 @@
     "windows-amd64-ltsc2019": {
       "digest": null,
       "registry_compressed_size_bytes": 0,
-      "tag": "1.0.1-windows-ltsc2019-amd64-r1",
+      "tag": "1.0.1-windows-ltsc2019-amd64-r2",
       "published": false,
       "qualified": false,
       "promoted": false,
@@ -43,7 +43,7 @@
     "windows-amd64-ltsc2022": {
       "digest": null,
       "registry_compressed_size_bytes": 0,
-      "tag": "1.0.1-windows-ltsc2022-amd64-r1",
+      "tag": "1.0.1-windows-ltsc2022-amd64-r2",
       "published": false,
       "qualified": false,
       "promoted": false,
@@ -54,7 +54,7 @@
     "windows-amd64-ltsc2025": {
       "digest": null,
       "registry_compressed_size_bytes": 0,
-      "tag": "1.0.1-windows-ltsc2025-amd64-r1",
+      "tag": "1.0.1-windows-ltsc2025-amd64-r2",
       "published": false,
       "qualified": false,
       "promoted": false,
