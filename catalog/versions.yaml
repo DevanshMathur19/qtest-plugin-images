@@ -6,7 +6,7 @@
     "go_version": "1.26.9",
     "source_url": "https://github.com/DevanshMathur19/qtest-publisher",
     "source_revision": "0b2e70d1b468efdbe249ee1a72536c6d161414d1",
-    "revision": 2
+    "revision": 1
   },
   "build_tools": {
     "go_windows_amd64": {

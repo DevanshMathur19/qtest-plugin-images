@@ -64,11 +64,11 @@ pipeline:
 
                       repository = "devanshmathur19/qtest-publisher"
                       tags = [
-                          "1.0.1-linux-amd64-r2",
-                          "1.0.1-linux-arm64-r2",
-                          "1.0.1-windows-ltsc2019-amd64-r2",
-                          "1.0.1-windows-ltsc2022-amd64-r2",
-                          "1.0.1-windows-ltsc2025-amd64-r2",
+                          "1.0.1-linux-amd64-r1",
+                          "1.0.1-linux-arm64-r1",
+                          "1.0.1-windows-ltsc2019-amd64-r1",
+                          "1.0.1-windows-ltsc2022-amd64-r1",
+                          "1.0.1-windows-ltsc2025-amd64-r1",
                       ]
                       token_url = (
                           "https://auth.docker.io/token?service=registry.docker.io"
@@ -138,7 +138,7 @@ pipeline:
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         repo: devanshmathur19/qtest-publisher
-                        tags: [1.0.1-linux-amd64-r2]
+                        tags: [1.0.1-linux-amd64-r1]
                         dockerfile: docker/Dockerfile.linux.amd64
                         context: .
                         caching: false
@@ -178,7 +178,7 @@ pipeline:
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         repo: devanshmathur19/qtest-publisher
-                        tags: [1.0.1-linux-arm64-r2]
+                        tags: [1.0.1-linux-arm64-r1]
                         dockerfile: docker/Dockerfile.linux.arm64
                         context: .
                         caching: false
@@ -229,7 +229,7 @@ pipeline:
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         repo: devanshmathur19/qtest-publisher
-                        tags: [1.0.1-windows-ltsc2019-amd64-r2]
+                        tags: [1.0.1-windows-ltsc2019-amd64-r1]
                         dockerfile: docker/Dockerfile.windows.amd64.ltsc2019
                         context: .
                         caching: false
@@ -275,7 +275,7 @@ pipeline:
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         repo: devanshmathur19/qtest-publisher
-                        tags: [1.0.1-windows-ltsc2022-amd64-r2]
+                        tags: [1.0.1-windows-ltsc2022-amd64-r1]
                         dockerfile: docker/Dockerfile.windows.amd64.ltsc2022
                         context: .
                         caching: false
@@ -326,7 +326,7 @@ pipeline:
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         repo: devanshmathur19/qtest-publisher
-                        tags: [1.0.1-windows-ltsc2025-amd64-r2]
+                        tags: [1.0.1-windows-ltsc2025-amd64-r1]
                         dockerfile: docker/Dockerfile.windows.amd64.ltsc2025
                         context: .
                         caching: false

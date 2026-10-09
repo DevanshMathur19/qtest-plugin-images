@@ -2,65 +2,75 @@
   "schema_version": 1,
   "repository": "devanshmathur19/qtest-publisher",
   "production_repository": "harness/qtest-publisher",
-  "publication_state": "unpublished",
+  "publication_state": "published",
   "qualification_state": "unqualified",
   "promotion_state": "unpromoted",
   "supported": false,
   "children": {
     "linux-amd64": {
-      "digest": null,
-      "registry_compressed_size_bytes": 0,
-      "tag": "1.0.1-linux-amd64-r2",
-      "published": false,
+      "digest": "sha256:2e89fb2f7fbcf67d3ce155d38554f30d840c381844ae0759b88022bc11016cb5",
+      "registry_compressed_size_bytes": 3588387,
+      "tag": "1.0.1-linux-amd64-r1",
+      "published": true,
       "qualified": false,
       "promoted": false,
       "supported": false,
-      "config_digest": "",
-      "evidence": {}
+      "config_digest": "sha256:efb720eedc232dc9fa21b812f29ba87696322d9d04b4c94c4f8a9a3f6ecc335c",
+      "evidence": {
+        "publication": "Harness execution F3frawECR1aK51aEM5bKgg (run 14)"
+      }
     },
     "linux-arm64": {
-      "digest": null,
-      "registry_compressed_size_bytes": 0,
-      "tag": "1.0.1-linux-arm64-r2",
-      "published": false,
+      "digest": "sha256:ebf09b8f826515b9425b6670c344de0105d5d93a431eff0318c124ec54570a35",
+      "registry_compressed_size_bytes": 3324560,
+      "tag": "1.0.1-linux-arm64-r1",
+      "published": true,
       "qualified": false,
       "promoted": false,
       "supported": false,
-      "config_digest": "",
-      "evidence": {}
+      "config_digest": "sha256:0cb5752b1d26453d4efd9ea420872c008dc479af47703819f90162ca1c8b066d",
+      "evidence": {
+        "publication": "Harness execution F3frawECR1aK51aEM5bKgg (run 14)"
+      }
     },
     "windows-amd64-ltsc2019": {
-      "digest": null,
-      "registry_compressed_size_bytes": 0,
-      "tag": "1.0.1-windows-ltsc2019-amd64-r2",
-      "published": false,
+      "digest": "sha256:4ad4980af1aceaf5968f5dd89124417d0466ed8f6af37371ac823c1769f984d0",
+      "registry_compressed_size_bytes": 112110056,
+      "tag": "1.0.1-windows-ltsc2019-amd64-r1",
+      "published": true,
       "qualified": false,
       "promoted": false,
       "supported": false,
-      "config_digest": "",
-      "evidence": {}
+      "config_digest": "sha256:bd84fedea8341f032b300dd969de65f5c9e001764136fc928d602fe7f239b146",
+      "evidence": {
+        "publication": "Harness execution F3frawECR1aK51aEM5bKgg (run 14)"
+      }
     },
     "windows-amd64-ltsc2022": {
-      "digest": null,
-      "registry_compressed_size_bytes": 0,
-      "tag": "1.0.1-windows-ltsc2022-amd64-r2",
-      "published": false,
+      "digest": "sha256:9be2ecbbe983db3aa3d6b3be7231368bbe4222b5a6d9471c9c38fa6033df7a2a",
+      "registry_compressed_size_bytes": 127572604,
+      "tag": "1.0.1-windows-ltsc2022-amd64-r1",
+      "published": true,
       "qualified": false,
       "promoted": false,
       "supported": false,
-      "config_digest": "",
-      "evidence": {}
+      "config_digest": "sha256:bb09678d7776035bdcd4cfeacd52be5b0ffbda225b2f26edc6c15edc81c3f962",
+      "evidence": {
+        "publication": "Harness execution F3frawECR1aK51aEM5bKgg (run 14)"
+      }
     },
     "windows-amd64-ltsc2025": {
-      "digest": null,
-      "registry_compressed_size_bytes": 0,
-      "tag": "1.0.1-windows-ltsc2025-amd64-r2",
-      "published": false,
+      "digest": "sha256:9f382d8250891337bd0405481325e57b302dd7de055cee898646e7cfc6a590aa",
+      "registry_compressed_size_bytes": 200586510,
+      "tag": "1.0.1-windows-ltsc2025-amd64-r1",
+      "published": true,
       "qualified": false,
       "promoted": false,
       "supported": false,
-      "config_digest": "",
-      "evidence": {}
+      "config_digest": "sha256:36c46d7e96d2f42a54d38cb23bbf278d3838aabf562cdae5e0139c02db6d1f86",
+      "evidence": {
+        "publication": "Harness execution F3frawECR1aK51aEM5bKgg (run 14)"
+      }
     }
   }
 }
