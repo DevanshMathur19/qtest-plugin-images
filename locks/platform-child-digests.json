@@ -3,7 +3,7 @@
   "repository": "devanshmathur19/qtest-publisher",
   "production_repository": "harness/qtest-publisher",
   "publication_state": "published",
-  "qualification_state": "unqualified",
+  "qualification_state": "qualified",
   "promotion_state": "unpromoted",
   "supported": false,
   "children": {
@@ -12,12 +12,13 @@
       "registry_compressed_size_bytes": 3588387,
       "tag": "1.0.1-linux-amd64-r1",
       "published": true,
-      "qualified": false,
+      "qualified": true,
       "promoted": false,
       "supported": false,
       "config_digest": "sha256:efb720eedc232dc9fa21b812f29ba87696322d9d04b4c94c4f8a9a3f6ecc335c",
       "evidence": {
-        "publication": "Harness execution F3frawECR1aK51aEM5bKgg (run 14)"
+        "publication": "Harness execution F3frawECR1aK51aEM5bKgg (run 14)",
+        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_generic_linux_dm/deployments/Yn4Fn5yNR4uREcJ4ar2B-Q/pipeline"
       }
     },
     "linux-arm64": {
@@ -25,12 +26,13 @@
       "registry_compressed_size_bytes": 3324560,
       "tag": "1.0.1-linux-arm64-r1",
       "published": true,
-      "qualified": false,
+      "qualified": true,
       "promoted": false,
       "supported": false,
       "config_digest": "sha256:0cb5752b1d26453d4efd9ea420872c008dc479af47703819f90162ca1c8b066d",
       "evidence": {
-        "publication": "Harness execution F3frawECR1aK51aEM5bKgg (run 14)"
+        "publication": "Harness execution F3frawECR1aK51aEM5bKgg (run 14)",
+        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_generic_linux_dm/deployments/Yn4Fn5yNR4uREcJ4ar2B-Q/pipeline"
       }
     },
     "windows-amd64-ltsc2019": {
@@ -38,12 +40,13 @@
       "registry_compressed_size_bytes": 112110056,
       "tag": "1.0.1-windows-ltsc2019-amd64-r1",
       "published": true,
-      "qualified": false,
+      "qualified": true,
       "promoted": false,
       "supported": false,
       "config_digest": "sha256:bd84fedea8341f032b300dd969de65f5c9e001764136fc928d602fe7f239b146",
       "evidence": {
-        "publication": "Harness execution F3frawECR1aK51aEM5bKgg (run 14)"
+        "publication": "Harness execution F3frawECR1aK51aEM5bKgg (run 14)",
+        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_generic_windows_dm/deployments/Iix92Z9lSByzt0dv_cX3EA/pipeline"
       }
     },
     "windows-amd64-ltsc2022": {
@@ -51,12 +54,13 @@
       "registry_compressed_size_bytes": 127572604,
       "tag": "1.0.1-windows-ltsc2022-amd64-r1",
       "published": true,
-      "qualified": false,
+      "qualified": true,
       "promoted": false,
       "supported": false,
       "config_digest": "sha256:bb09678d7776035bdcd4cfeacd52be5b0ffbda225b2f26edc6c15edc81c3f962",
       "evidence": {
-        "publication": "Harness execution F3frawECR1aK51aEM5bKgg (run 14)"
+        "publication": "Harness execution F3frawECR1aK51aEM5bKgg (run 14)",
+        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_generic_windows_dm/deployments/Iix92Z9lSByzt0dv_cX3EA/pipeline"
       }
     },
     "windows-amd64-ltsc2025": {
@@ -64,12 +68,13 @@
       "registry_compressed_size_bytes": 200586510,
       "tag": "1.0.1-windows-ltsc2025-amd64-r1",
       "published": true,
-      "qualified": false,
+      "qualified": true,
       "promoted": false,
       "supported": false,
       "config_digest": "sha256:36c46d7e96d2f42a54d38cb23bbf278d3838aabf562cdae5e0139c02db6d1f86",
       "evidence": {
-        "publication": "Harness execution F3frawECR1aK51aEM5bKgg (run 14)"
+        "publication": "Harness execution F3frawECR1aK51aEM5bKgg (run 14)",
+        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_generic_windows_dm/deployments/Iix92Z9lSByzt0dv_cX3EA/pipeline"
       }
     }
   }
