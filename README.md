@@ -46,13 +46,17 @@ cross-compilation, or a candidate build is not a support claim.
    checksum-verified Go SDK and packaged on matching Windows VM pools.
 2. Record each registry digest and publication execution with
    `scripts/release.py record-published`.
-3. `.harness/qualify-kubernetes.yaml` runs empty-result and real sandbox
-   publication contracts on KubernetesDirect Linux AMD64/ARM64 and Windows
-   LTSC 2019/2022/2025. Every stage asserts the running image ID.
+3. `.harness/qualify-generic-linux.yaml` and
+   `.harness/qualify-generic-windows.yaml` run the exact generic candidate tag
+   with automatic entrypoint detection and real sandbox publication on Linux
+   AMD64/ARM64 and Windows LTSC 2019/2022/2025. The Windows pipeline also
+   validates the complete index digest and platform descriptors.
 4. Record each successful stage with `scripts/release.py record-qualified`.
 5. `.harness/secure-promote.yaml` blocks on the complete qualified lock, runs
    vulnerability and license gates, copies children by digest without
    rebuilding, and validates the five-platform index.
+6. Repeat the generic-tag qualification against the exact production tag
+   before customer handoff.
 
 Promotion is a controlled-adoption milestone and does not set `supported:
 true`. SBOM, signature, provenance, and final support approval remain explicit

@@ -1,9 +1,65 @@
 # qTest Publisher Release Audit
 
-Status: **promoted controlled-adoption release — customer UAT ready,
-unsupported**
+Status: **1.0.1 promoted and verified through the exact customer-facing
+multi-platform tag — customer UAT ready, unsupported**
 
-## Source
+## 1.0.1 multi-platform entrypoint remediation
+
+Version `1.0.1` fixes the Windows failure in the generic multi-platform
+`1.0.0` tag. The affected image configured `/qtest-publisher`, which Windows
+container execution treated as an invalid executable path. All five 1.0.1
+children use the portable PATH-resolved entrypoint
+`ENTRYPOINT ["qtest-publisher"]`.
+
+- Plugin source revision:
+  `0b2e70d1b468efdbe249ee1a72536c6d161414d1`
+- Candidate source tag: `v1.0.1-rc.2`
+- Candidate revision: `r1`
+- Candidate generic tag:
+  `devanshmathur19/qtest-publisher:1.0.1-multiplatform-r1`
+- Candidate index digest:
+  `sha256:aca1a51bbe4f6aa9e2a0afd3628f47d71af326d1f40fdbf6fc236969a30d5b93`
+
+Published and qualified child digests:
+
+- Linux AMD64:
+  `sha256:2e89fb2f7fbcf67d3ce155d38554f30d840c381844ae0759b88022bc11016cb5`
+- Linux ARM64:
+  `sha256:ebf09b8f826515b9425b6670c344de0105d5d93a431eff0318c124ec54570a35`
+- Windows LTSC 2019:
+  `sha256:4ad4980af1aceaf5968f5dd89124417d0466ed8f6af37371ac823c1769f984d0`
+- Windows LTSC 2022:
+  `sha256:9be2ecbbe983db3aa3d6b3be7231368bbe4222b5a6d9471c9c38fa6033df7a2a`
+- Windows LTSC 2025:
+  `sha256:9f382d8250891337bd0405481325e57b302dd7de055cee898646e7cfc6a590aa`
+
+The exact candidate generic tag published the timestamped JUnit fixture to
+the Harness-owned qTest sandbox on Linux AMD64/ARM64 and matching Windows
+LTSC 2019/2022/2025 workers:
+
+- Linux qualification:
+  `https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_generic_linux_dm/deployments/Yn4Fn5yNR4uREcJ4ar2B-Q/pipeline`
+- Windows qualification:
+  `https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_generic_windows_dm/deployments/Iix92Z9lSByzt0dv_cX3EA/pipeline`
+
+The security and license gates passed, after which the exact five child
+digests were copied without rebuilding to `harness/qtest-publisher`:
+
+- Production generic tag: `harness/qtest-publisher:1.0.1`
+- Production index digest:
+  `sha256:10695a72e6ef508e1e9ff5703f24748e3a2a98eec8126bd1abcd507981b3aa70`
+- Promotion execution:
+  `https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_secure_promote_dm/deployments/c-jOMaWYSIa-7HYtlCWz3w/pipeline`
+- Exact production-tag Windows verification:
+  `https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_generic_windows_dm/deployments/YuGz36tCQ0ePWZ-B1ZsD4Q/pipeline`
+
+The final verification resolved `harness/qtest-publisher:1.0.1` through its
+production index on all three Windows workers, used automatic entrypoint
+detection, parsed the four-case fixture, and published it to the qTest
+sandbox. The release remains controlled adoption with `supported: false`
+pending the deferred support approvals listed below.
+
+## Historical 1.0.0 release source
 
 - Plugin source revision:
   `803c1f8de400c272a4a81395c8906bebaa6e1e84`
