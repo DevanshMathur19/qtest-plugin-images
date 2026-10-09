@@ -1,10 +1,16 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-if ($env:CANDIDATE_IMAGE -notmatch '@(sha256:[0-9a-f]{64})$') {
-    throw 'CANDIDATE_IMAGE must be pinned by digest'
+$expectedDigest = $env:EXPECTED_IMAGE_DIGEST
+if (-not $expectedDigest) {
+    if ($env:CANDIDATE_IMAGE -notmatch '@(sha256:[0-9a-f]{64})$') {
+        throw 'CANDIDATE_IMAGE must be pinned by digest or EXPECTED_IMAGE_DIGEST must be set'
+    }
+    $expectedDigest = $Matches[1]
 }
-$expectedDigest = $Matches[1]
+if ($expectedDigest -notmatch '^sha256:[0-9a-f]{64}$') {
+    throw 'EXPECTED_IMAGE_DIGEST must be a sha256 digest'
+}
 $actualBuild = [System.Environment]::OSVersion.Version.Build.ToString()
 if ($actualBuild -ne $env:EXPECTED_WINDOWS_BUILD) {
     throw "Expected Windows build $env:EXPECTED_WINDOWS_BUILD; observed $actualBuild"

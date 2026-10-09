@@ -231,6 +231,9 @@ class ReleaseTests(unittest.TestCase):
         pipeline_root = ROOT / ".harness"
         publish = (pipeline_root / "publish-candidates.yaml").read_text()
         qualify = (pipeline_root / "qualify-kubernetes.yaml").read_text()
+        qualify_generic = (
+            pipeline_root / "qualify-generic-windows.yaml"
+        ).read_text()
         promote = (pipeline_root / "secure-promote.yaml").read_text()
 
         self.assertEqual(5, publish.count("type: BuildAndPushDockerRegistry"))
@@ -290,6 +293,22 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(5, qualify.count("type: KubernetesDirect"))
         self.assertIn("node.kubernetes.io/windows-build: \"10.0.26100\"", qualify)
 
+        self.assertIn("name: Validate generic candidate index", qualify_generic)
+        self.assertIn("candidate must be the exact generic tag", qualify_generic)
+        self.assertIn("generic tag descriptors do not match", qualify_generic)
+        self.assertIn(
+            "name: Generic tag automatic entrypoint contract", qualify_generic
+        )
+        self.assertIn(
+            "name: Assert generic tag selected Windows child", qualify_generic
+        )
+        self.assertIn("type: KubernetesDirect", qualify_generic)
+        self.assertIn(
+            "node.kubernetes.io/windows-build: \"10.0.20348\"",
+            qualify_generic,
+        )
+        self.assertNotIn(":latest", qualify_generic)
+
         self.assertIn("connectorRef: dmgitcon", promote)
         self.assertIn('crane index append "$@" -t "$production_index"', promote)
         self.assertNotIn("candidate_index", promote)
@@ -333,6 +352,7 @@ class ReleaseTests(unittest.TestCase):
             self.assertIn("Running digest verified:", assertion)
         self.assertIn('pod_resource.get("spec", {})', linux_assertion)
         self.assertIn("$podResource.spec.containers", windows_assertion)
+        self.assertIn("EXPECTED_IMAGE_DIGEST", windows_assertion)
         fixture = ROOT / "tests" / "fixtures" / "junit" / "TEST-qtest-publisher.xml"
         self.assertIn("<failure", fixture.read_text())
         self.assertIn("<error", fixture.read_text())

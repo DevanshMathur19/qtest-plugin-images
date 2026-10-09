@@ -1,0 +1,175 @@
+pipeline:
+  name: qTest Publisher - Generic Tag Windows Qualification-dm
+  identifier: qtest_publisher_qualify_generic_windows_dm
+  projectIdentifier: Drone_Plugins
+  orgIdentifier: default
+  properties:
+    ci:
+      codebase:
+        connectorRef: dmgitcon
+        repoName: qtest-plugin-images
+        build: <+input>
+  variables:
+    - {name: dockerConnector, type: String, value: dmdockerconn}
+    - {name: namespace, type: String, value: cie-test}
+    - {name: candidateTag, type: String, value: <+input>}
+    - {name: expectedIndexDigest, type: String, value: <+input>}
+    - {name: expectedWindows2022Digest, type: String, value: <+input>}
+    - {name: qtestUrl, type: String, value: <+input>}
+    - {name: qtestToken, type: Secret, value: <+input>}
+    - {name: qtestProjectId, type: String, value: <+input>}
+    - {name: qtestCycleId, type: String, value: <+input>}
+  stages:
+    - stage:
+        name: Validate generic candidate index
+        identifier: validate_generic_candidate_index
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform: {os: Linux, arch: Amd64}
+          runtime: {type: Cloud, spec: {}}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Match tag index to published digest lock
+                  identifier: match_tag_index_to_lock
+                  spec:
+                    connectorRef: <+pipeline.variables.dockerConnector>
+                    image: docker.io/library/python:3.13.7-alpine@sha256:9ba6d8cbebf0fb6546ae71f2a1c14f6ffd2fdab83af7fa5669734ef30ad48844
+                    shell: Sh
+                    envVariables:
+                      CANDIDATE_TAG: <+pipeline.variables.candidateTag>
+                      EXPECTED_INDEX_DIGEST: <+pipeline.variables.expectedIndexDigest>
+                      EXPECTED_WINDOWS_2022_DIGEST: <+pipeline.variables.expectedWindows2022Digest>
+                    command: |
+                      set -eu
+                      python3 scripts/release.py validate-lock
+                      python3 - <<'PY'
+                      import json
+                      import os
+                      import re
+                      import urllib.request
+
+                      candidate = os.environ["CANDIDATE_TAG"].removeprefix("docker.io/")
+                      expected_index = os.environ["EXPECTED_INDEX_DIGEST"]
+                      expected_windows_2022 = os.environ["EXPECTED_WINDOWS_2022_DIGEST"]
+                      if "@" in candidate or ":" not in candidate:
+                          raise SystemExit("candidate must be the exact generic tag, not a digest")
+                      if not re.fullmatch(r"sha256:[0-9a-f]{64}", expected_index):
+                          raise SystemExit("invalid expected index digest")
+                      if not re.fullmatch(r"sha256:[0-9a-f]{64}", expected_windows_2022):
+                          raise SystemExit("invalid expected Windows 2022 digest")
+                      repository, tag = candidate.rsplit(":", 1)
+                      token_url = (
+                          "https://auth.docker.io/token?service=registry.docker.io"
+                          f"&scope=repository:{repository}:pull"
+                      )
+                      with urllib.request.urlopen(token_url, timeout=30) as response:
+                          token = json.load(response)["token"]
+                      request = urllib.request.Request(
+                          f"https://registry-1.docker.io/v2/{repository}/manifests/{tag}",
+                          headers={
+                              "Authorization": f"Bearer {token}",
+                              "Accept": (
+                                  "application/vnd.docker.distribution.manifest.list.v2+json,"
+                                  "application/vnd.oci.image.index.v1+json"
+                              ),
+                          },
+                      )
+                      with urllib.request.urlopen(request, timeout=30) as response:
+                          observed_index = response.headers["Docker-Content-Digest"]
+                          index = json.load(response)
+                      if observed_index != expected_index:
+                          raise SystemExit(
+                              f"generic tag digest mismatch: {observed_index} != {expected_index}"
+                          )
+                      lock = json.load(open("locks/platform-child-digests.json"))
+                      catalog = json.load(open("catalog/versions.yaml"))
+                      expected = {}
+                      for name, child in lock["children"].items():
+                          platform = catalog["platforms"][name]
+                          descriptor = {
+                              "os": "windows" if name.startswith("windows-") else "linux",
+                              "architecture": "arm64" if name == "linux-arm64" else "amd64",
+                          }
+                          if name.startswith("windows-"):
+                              descriptor["os.version"] = platform["os_version"]
+                          expected[child["digest"]] = descriptor
+                      observed = {
+                          item["digest"]: item["platform"] for item in index["manifests"]
+                      }
+                      if observed != expected:
+                          raise SystemExit("generic tag descriptors do not match the digest lock")
+                      if expected_windows_2022 not in observed:
+                          raise SystemExit("Windows 2022 child is absent from the generic tag")
+                      print(f"Verified generic candidate index: {candidate}@{observed_index}")
+                      PY
+    - stage:
+        name: Qualify generic tag on Windows LTSC 2022
+        identifier: qualify_generic_windows_ltsc2022
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform: {os: Windows, arch: Amd64}
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: gcopdmwindowsbuildfarm
+              namespace: <+pipeline.variables.namespace>
+              os: Windows
+              automountServiceAccountToken: true
+              serviceAccountName: ci-image-e2e-reader
+              nodeSelector:
+                kubernetes.io/os: windows
+                node.kubernetes.io/windows-build: "10.0.20348"
+              tolerations:
+                - {effect: NoSchedule, key: node.kubernetes.io/os, operator: Equal, value: windows}
+          execution:
+            steps:
+              - step:
+                  type: Plugin
+                  name: Generic tag automatic entrypoint contract
+                  identifier: generic_tag_automatic_entrypoint_contract
+                  spec:
+                    connectorRef: <+pipeline.variables.dockerConnector>
+                    image: <+pipeline.variables.candidateTag>
+                    settings:
+                      qtest_url: https://unused.qtestnet.com
+                      bearer_token: not-used-for-empty-result
+                      project_id: "1"
+                      destination_type: test-cycle
+                      destination_id: "1"
+                      result_paths: no-results/**/*.xml
+                      empty_result: warn
+              - step:
+                  type: Plugin
+                  name: Publish sandbox JUnit through generic tag
+                  identifier: publish_sandbox_junit_generic_tag
+                  spec:
+                    connectorRef: <+pipeline.variables.dockerConnector>
+                    image: <+pipeline.variables.candidateTag>
+                    settings:
+                      qtest_url: <+pipeline.variables.qtestUrl>
+                      bearer_token: <+pipeline.variables.qtestToken>
+                      project_id: <+pipeline.variables.qtestProjectId>
+                      destination_type: test-cycle
+                      destination_id: <+pipeline.variables.qtestCycleId>
+                      suite_name: qtest-qualification-generic-windows-ltsc2022
+                      reuse_suite: "true"
+                      result_paths: tests/fixtures/junit/*.xml
+                      identity_mode: class
+              - step:
+                  type: Run
+                  name: Assert generic tag selected Windows child
+                  identifier: assert_generic_tag_selected_windows_child
+                  spec:
+                    connectorRef: <+pipeline.variables.dockerConnector>
+                    image: mcr.microsoft.com/windows/servercore@sha256:e10503b9a4f7faafa30aa0f5d0e8e7f7ca30a4496b3b87d61178b4d7c6815fb5
+                    shell: Powershell
+                    envVariables:
+                      CANDIDATE_IMAGE: <+pipeline.variables.candidateTag>
+                      EXPECTED_IMAGE_DIGEST: <+pipeline.variables.expectedWindows2022Digest>
+                      POD_NAMESPACE: <+pipeline.variables.namespace>
+                      EXPECTED_WINDOWS_BUILD: "20348"
+                    command: powershell -File scripts/assert-kubernetes-image.ps1
