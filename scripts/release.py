@@ -142,7 +142,7 @@ def render_linux(cat: dict[str, Any], platform_name: str) -> str:
         [
             f"ARG RUNTIME_IMAGE={parent['image']}@{parent['digest']}",
             "FROM ${RUNTIME_IMAGE}",
-            f"COPY --chown=65532:65532 release/linux/{arch}/qtest-publisher /qtest-publisher",
+            f"COPY --chown=65532:65532 release/linux/{arch}/qtest-publisher /usr/local/bin/qtest-publisher",
             'LABEL org.opencontainers.image.source="'
             + cat["plugin"]["source_url"]
             + '" \\',
@@ -154,7 +154,7 @@ def render_linux(cat: dict[str, Any], platform_name: str) -> str:
             + '" \\',
             '      io.harness.release.status="candidate"',
             "USER 65532:65532",
-            'ENTRYPOINT ["/qtest-publisher"]',
+            'ENTRYPOINT ["qtest-publisher"]',
             "",
         ]
     )
@@ -172,12 +172,13 @@ def render_windows(cat: dict[str, Any], platform_name: str) -> str:
             "USER ContainerUser",
             "WORKDIR C:/workspace",
             "COPY release/windows/amd64/qtest-publisher.exe C:/bin/qtest-publisher.exe",
+            'ENV PATH="C:\\bin;C:\\Windows\\system32;C:\\Windows"',
             f'LABEL org.opencontainers.image.source="{cat["plugin"]["source_url"]}" `',
             f'      org.opencontainers.image.revision="{cat["plugin"]["source_revision"]}" `',
             f'      org.opencontainers.image.version="{cat["plugin"]["version"]}" `',
             f'      io.harness.windows.build="{item["windows_build"]}" `',
             '      io.harness.release.status="candidate"',
-            'ENTRYPOINT ["C:\\\\bin\\\\qtest-publisher.exe"]',
+            'ENTRYPOINT ["qtest-publisher"]',
             "",
         ]
     )

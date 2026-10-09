@@ -2,85 +2,65 @@
   "schema_version": 1,
   "repository": "devanshmathur19/qtest-publisher",
   "production_repository": "harness/qtest-publisher",
-  "publication_state": "published",
-  "qualification_state": "qualified",
-  "promotion_state": "promoted",
+  "publication_state": "unpublished",
+  "qualification_state": "unqualified",
+  "promotion_state": "unpromoted",
   "supported": false,
   "children": {
     "linux-amd64": {
-      "digest": "sha256:f0e32d7691c4cc4d1e314a97328c7673f432ecd88c2c3df55b768352078d3bcf",
-      "registry_compressed_size_bytes": 3505874,
-      "tag": "1.0.0-linux-amd64-r2",
-      "published": true,
-      "qualified": true,
-      "promoted": true,
+      "digest": null,
+      "registry_compressed_size_bytes": 0,
+      "tag": "1.0.1-linux-amd64-r1",
+      "published": false,
+      "qualified": false,
+      "promoted": false,
       "supported": false,
-      "config_digest": "sha256:3d94e9908848fa8f1b85fb10118ce2587b5806805a95343ff78035e67839f6b9",
-      "evidence": {
-        "publication": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_publish_candidates_dm/deployments/5eND5oqWRS6ZZn8eJxaUfw/pipeline",
-        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/jDe0nOZ2T4mMQlPyrhBXqA/pipeline",
-        "promotion": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_secure_promote_dm/deployments/PVKD2jhqQp66uDKFRH1Jdw/pipeline"
-      }
+      "config_digest": "",
+      "evidence": {}
     },
     "linux-arm64": {
-      "digest": "sha256:0f76a046f9309e00f69f1e833f742be01fd23a12ca8d9d661d92f977731c68d4",
-      "registry_compressed_size_bytes": 3259043,
-      "tag": "1.0.0-linux-arm64-r2",
-      "published": true,
-      "qualified": true,
-      "promoted": true,
+      "digest": null,
+      "registry_compressed_size_bytes": 0,
+      "tag": "1.0.1-linux-arm64-r1",
+      "published": false,
+      "qualified": false,
+      "promoted": false,
       "supported": false,
-      "config_digest": "sha256:07df24653171a0e0924117f44e684227d3677d25d5a0a48ba630063314142add",
-      "evidence": {
-        "publication": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_publish_candidates_dm/deployments/5eND5oqWRS6ZZn8eJxaUfw/pipeline",
-        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/jDe0nOZ2T4mMQlPyrhBXqA/pipeline",
-        "promotion": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_secure_promote_dm/deployments/PVKD2jhqQp66uDKFRH1Jdw/pipeline"
-      }
+      "config_digest": "",
+      "evidence": {}
     },
     "windows-amd64-ltsc2019": {
-      "digest": "sha256:05899b3f8631e1677cdab2c69baee878c4f58f1daa7af88dacf9e5b1b92a2ec5",
-      "registry_compressed_size_bytes": 112022400,
-      "tag": "1.0.0-windows-ltsc2019-amd64-r2",
-      "published": true,
-      "qualified": true,
-      "promoted": true,
+      "digest": null,
+      "registry_compressed_size_bytes": 0,
+      "tag": "1.0.1-windows-ltsc2019-amd64-r1",
+      "published": false,
+      "qualified": false,
+      "promoted": false,
       "supported": false,
-      "config_digest": "sha256:e5d47146e38b5d9c84cd6f07b4003e7d7f917d6eca366cd16aad66e9b4534987",
-      "evidence": {
-        "publication": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_publish_candidates_dm/deployments/pgmIoXVPTd2X1dHj9Lfn3g/pipeline",
-        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/jDe0nOZ2T4mMQlPyrhBXqA/pipeline",
-        "promotion": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_secure_promote_dm/deployments/PVKD2jhqQp66uDKFRH1Jdw/pipeline"
-      }
+      "config_digest": "",
+      "evidence": {}
     },
     "windows-amd64-ltsc2022": {
-      "digest": "sha256:e11d90125587075c91e1749ad072bd6442b7743e690a3d47d9558f4560ce9cf3",
-      "registry_compressed_size_bytes": 127489215,
-      "tag": "1.0.0-windows-ltsc2022-amd64-r2",
-      "published": true,
-      "qualified": true,
-      "promoted": true,
+      "digest": null,
+      "registry_compressed_size_bytes": 0,
+      "tag": "1.0.1-windows-ltsc2022-amd64-r1",
+      "published": false,
+      "qualified": false,
+      "promoted": false,
       "supported": false,
-      "config_digest": "sha256:f54d68987e37a341ad062bbd253fd66f7b80b3a1ef3061f82d0ebd6297e2f29e",
-      "evidence": {
-        "publication": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_publish_candidates_dm/deployments/5eND5oqWRS6ZZn8eJxaUfw/pipeline",
-        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/jDe0nOZ2T4mMQlPyrhBXqA/pipeline",
-        "promotion": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_secure_promote_dm/deployments/PVKD2jhqQp66uDKFRH1Jdw/pipeline"
-      }
+      "config_digest": "",
+      "evidence": {}
     },
     "windows-amd64-ltsc2025": {
-      "digest": "sha256:062251cd72afa803f6be6b7745329b5e4199f1841d39e0df222fcb1bf501a0f8",
-      "registry_compressed_size_bytes": 200503108,
-      "tag": "1.0.0-windows-ltsc2025-amd64-r2",
-      "published": true,
-      "qualified": true,
-      "promoted": true,
+      "digest": null,
+      "registry_compressed_size_bytes": 0,
+      "tag": "1.0.1-windows-ltsc2025-amd64-r1",
+      "published": false,
+      "qualified": false,
+      "promoted": false,
       "supported": false,
-      "config_digest": "sha256:c936258b4c0c9561d1ab850e80e9e4210fdf4c515bd1333f59df034e3295cd13",
-      "evidence": {
-        "publication": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_publish_candidates_dm/deployments/5eND5oqWRS6ZZn8eJxaUfw/pipeline",
-        "qualification": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_qualify_kubernetes_dm/deployments/jDe0nOZ2T4mMQlPyrhBXqA/pipeline",
-        "promotion": "https://app.harness.io/ng/account/gCoPSwHxS7ipOgx2iA9tOQ/all/orgs/default/projects/Drone_Plugins/pipelines/qtest_publisher_secure_promote_dm/deployments/PVKD2jhqQp66uDKFRH1Jdw/pipeline"
-      }
+      "config_digest": "",
+      "evidence": {}
     }
   }
 }

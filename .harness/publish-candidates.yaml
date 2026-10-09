@@ -40,11 +40,11 @@ pipeline:
                       git cat-file -e 803c1f8de400c272a4a81395c8906bebaa6e1e84^{commit}
                       git diff --exit-code 803c1f8de400c272a4a81395c8906bebaa6e1e84 -- go.mod main.go plugin
                       cat <<'CHECKSUMS' | sha256sum -c -
-                      3d94e9908848fa8f1b85fb10118ce2587b5806805a95343ff78035e67839f6b9  docker/Dockerfile.linux.amd64
-                      07df24653171a0e0924117f44e684227d3677d25d5a0a48ba630063314142add  docker/Dockerfile.linux.arm64
-                      e5d47146e38b5d9c84cd6f07b4003e7d7f917d6eca366cd16aad66e9b4534987  docker/Dockerfile.windows.amd64.ltsc2019
-                      f54d68987e37a341ad062bbd253fd66f7b80b3a1ef3061f82d0ebd6297e2f29e  docker/Dockerfile.windows.amd64.ltsc2022
-                      c936258b4c0c9561d1ab850e80e9e4210fdf4c515bd1333f59df034e3295cd13  docker/Dockerfile.windows.amd64.ltsc2025
+                      ef0d7dd09bf35ac9f3af2dd9d8e85856d803a08a76d08d2e329d6f7c2664c6eb  docker/Dockerfile.linux.amd64
+                      89ccc74988214d06b558ac8efb131cb657ec6a7ac44d06d0b692a085037e4b59  docker/Dockerfile.linux.arm64
+                      fc4651a7dbe02bf9c91b31b51285ba482f5129dbec746e7f2b3827539a0d2445  docker/Dockerfile.windows.amd64.ltsc2019
+                      8625880ca8e37d01b3c844a51bbc6cbf985298d740163d0e665bd3fa405fdcfa  docker/Dockerfile.windows.amd64.ltsc2022
+                      06c193911cd0eab2dac0144c38d91de79625076c17a7edbc4d75a1617e516038  docker/Dockerfile.windows.amd64.ltsc2025
                       0b3c226f631703b76cafd4bb7bb1a15cc8f3b068f65b43a274dd66b264ee6ee7  docker/manifest.tmpl
                       CHECKSUMS
                       test "$(go env GOVERSION)" = go1.25.13
@@ -64,11 +64,11 @@ pipeline:
 
                       repository = "devanshmathur19/qtest-publisher"
                       tags = [
-                          "1.0.0-linux-amd64-r2",
-                          "1.0.0-linux-arm64-r2",
-                          "1.0.0-windows-ltsc2019-amd64-r2",
-                          "1.0.0-windows-ltsc2022-amd64-r2",
-                          "1.0.0-windows-ltsc2025-amd64-r2",
+                          "1.0.1-linux-amd64-r1",
+                          "1.0.1-linux-arm64-r1",
+                          "1.0.1-windows-ltsc2019-amd64-r1",
+                          "1.0.1-windows-ltsc2022-amd64-r1",
+                          "1.0.1-windows-ltsc2025-amd64-r1",
                       ]
                       token_url = (
                           "https://auth.docker.io/token?service=registry.docker.io"
@@ -128,7 +128,7 @@ pipeline:
                           set -eu
                           mkdir -p release/linux/amd64
                           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
-                            -ldflags="-s -w -X main.version=1.0.0+<+codebase.shortCommitSha>" \
+                            -ldflags="-s -w -X main.version=1.0.1+<+codebase.shortCommitSha>" \
                             -o release/linux/amd64/qtest-publisher .
                   - step:
                       type: BuildAndPushDockerRegistry
@@ -138,7 +138,7 @@ pipeline:
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         repo: devanshmathur19/qtest-publisher
-                        tags: [1.0.0-linux-amd64-r2]
+                        tags: [1.0.1-linux-amd64-r1]
                         dockerfile: docker/Dockerfile.linux.amd64
                         context: .
                         caching: false
@@ -168,7 +168,7 @@ pipeline:
                           set -eu
                           mkdir -p release/linux/arm64
                           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath \
-                            -ldflags="-s -w -X main.version=1.0.0+<+codebase.shortCommitSha>" \
+                            -ldflags="-s -w -X main.version=1.0.1+<+codebase.shortCommitSha>" \
                             -o release/linux/arm64/qtest-publisher .
                   - step:
                       type: BuildAndPushDockerRegistry
@@ -178,7 +178,7 @@ pipeline:
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         repo: devanshmathur19/qtest-publisher
-                        tags: [1.0.0-linux-arm64-r2]
+                        tags: [1.0.1-linux-arm64-r1]
                         dockerfile: docker/Dockerfile.linux.arm64
                         context: .
                         caching: false
@@ -220,7 +220,7 @@ pipeline:
                           Expand-Archive go.zip -DestinationPath C:\tools -Force
                           New-Item -ItemType Directory -Force release\windows\amd64 | Out-Null
                           $env:CGO_ENABLED='0'; $env:GOOS='windows'; $env:GOARCH='amd64'
-                          & C:\tools\go\bin\go.exe build -trimpath -ldflags '-s -w -X main.version=1.0.0+<+codebase.shortCommitSha>' -o release\windows\amd64\qtest-publisher.exe .
+                          & C:\tools\go\bin\go.exe build -trimpath -ldflags '-s -w -X main.version=1.0.1+<+codebase.shortCommitSha>' -o release\windows\amd64\qtest-publisher.exe .
                   - step:
                       type: BuildAndPushDockerRegistry
                       name: Publish immutable child
@@ -229,7 +229,7 @@ pipeline:
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         repo: devanshmathur19/qtest-publisher
-                        tags: [1.0.0-windows-ltsc2019-amd64-r2]
+                        tags: [1.0.1-windows-ltsc2019-amd64-r1]
                         dockerfile: docker/Dockerfile.windows.amd64.ltsc2019
                         context: .
                         caching: false
@@ -266,7 +266,7 @@ pipeline:
                           Expand-Archive go.zip -DestinationPath C:\tools -Force
                           New-Item -ItemType Directory -Force release\windows\amd64 | Out-Null
                           $env:CGO_ENABLED='0'; $env:GOOS='windows'; $env:GOARCH='amd64'
-                          & C:\tools\go\bin\go.exe build -trimpath -ldflags '-s -w -X main.version=1.0.0+<+codebase.shortCommitSha>' -o release\windows\amd64\qtest-publisher.exe .
+                          & C:\tools\go\bin\go.exe build -trimpath -ldflags '-s -w -X main.version=1.0.1+<+codebase.shortCommitSha>' -o release\windows\amd64\qtest-publisher.exe .
                   - step:
                       type: BuildAndPushDockerRegistry
                       name: Publish immutable child
@@ -275,7 +275,7 @@ pipeline:
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         repo: devanshmathur19/qtest-publisher
-                        tags: [1.0.0-windows-ltsc2022-amd64-r2]
+                        tags: [1.0.1-windows-ltsc2022-amd64-r1]
                         dockerfile: docker/Dockerfile.windows.amd64.ltsc2022
                         context: .
                         caching: false
@@ -317,7 +317,7 @@ pipeline:
                           Expand-Archive go.zip -DestinationPath C:\tools -Force
                           New-Item -ItemType Directory -Force release\windows\amd64 | Out-Null
                           $env:CGO_ENABLED='0'; $env:GOOS='windows'; $env:GOARCH='amd64'
-                          & C:\tools\go\bin\go.exe build -trimpath -ldflags '-s -w -X main.version=1.0.0+<+codebase.shortCommitSha>' -o release\windows\amd64\qtest-publisher.exe .
+                          & C:\tools\go\bin\go.exe build -trimpath -ldflags '-s -w -X main.version=1.0.1+<+codebase.shortCommitSha>' -o release\windows\amd64\qtest-publisher.exe .
                   - step:
                       type: BuildAndPushDockerRegistry
                       name: Publish immutable child
@@ -326,7 +326,7 @@ pipeline:
                       spec:
                         connectorRef: <+pipeline.variables.dockerConnector>
                         repo: devanshmathur19/qtest-publisher
-                        tags: [1.0.0-windows-ltsc2025-amd64-r2]
+                        tags: [1.0.1-windows-ltsc2025-amd64-r1]
                         dockerfile: docker/Dockerfile.windows.amd64.ltsc2025
                         context: .
                         caching: false

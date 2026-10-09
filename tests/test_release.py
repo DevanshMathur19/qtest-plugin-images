@@ -81,15 +81,43 @@ class ReleaseTests(unittest.TestCase):
         linux = rendered[Path("docker/Dockerfile.linux.amd64")]
         self.assertIn("gcr.io/distroless/static-debian12@sha256:", linux)
         self.assertIn("USER 65532:65532", linux)
-        self.assertIn('ENTRYPOINT ["/qtest-publisher"]', linux)
+        self.assertIn(
+            "release/linux/amd64/qtest-publisher /usr/local/bin/qtest-publisher",
+            linux,
+        )
+        self.assertIn('ENTRYPOINT ["qtest-publisher"]', linux)
         for name in ("ltsc2019", "ltsc2022", "ltsc2025"):
             windows = rendered[Path(f"docker/Dockerfile.windows.amd64.{name}")]
             self.assertIn("mcr.microsoft.com/windows/nanoserver@sha256:", windows)
-            self.assertIn("qtest-publisher.exe", windows)
+            self.assertIn(
+                "COPY release/windows/amd64/qtest-publisher.exe C:/bin/qtest-publisher.exe",
+                windows,
+            )
+            self.assertIn(
+                'ENV PATH="C:\\bin;C:\\Windows\\system32;C:\\Windows"',
+                windows,
+            )
+            self.assertIn('ENTRYPOINT ["qtest-publisher"]', windows)
             self.assertIn("USER ContainerUser", windows)
             self.assertNotIn("ContainerAdministrator", windows)
             self.assertNotIn("servercore", windows.lower())
         self.assertTrue(all(":latest" not in content for content in rendered.values()))
+
+    def test_all_platforms_use_the_same_path_resolved_entrypoint(self):
+        rendered = release.render_all(release.catalog())
+        expected = 'ENTRYPOINT ["qtest-publisher"]'
+        self.assertTrue(all(expected in content for content in rendered.values()))
+        self.assertEqual(
+            5,
+            sum(content.count(expected) for content in rendered.values()),
+        )
+        self.assertTrue(
+            all(
+                'ENTRYPOINT ["/qtest-publisher"]' not in content
+                and 'ENTRYPOINT ["C:\\\\bin\\\\qtest-publisher.exe"]' not in content
+                for content in rendered.values()
+            )
+        )
 
     def test_manifest_has_linux_and_exact_windows_descriptors(self):
         manifest = release.render_manifest(release.catalog())
