@@ -320,6 +320,13 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(
             3, qualify_generic.count("result_paths: qtest/junit/*.xml")
         )
+        self.assertEqual(
+            3,
+            qualify_generic.count('timestamp="2026-10-06T00:00:00Z"'),
+        )
+        self.assertEqual(
+            3, qualify_generic.count('testsuite name="publisher.contract"')
+        )
         self.assertNotIn("windows/servercore", qualify_generic)
         self.assertNotIn("unused.qtestnet.com", qualify_generic)
         self.assertNotIn("no-results/**/*.xml", qualify_generic)
