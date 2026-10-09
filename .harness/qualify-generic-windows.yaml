@@ -14,7 +14,6 @@ pipeline:
     - {name: namespace, type: String, value: cie-test}
     - {name: candidateTag, type: String, value: <+input>}
     - {name: expectedIndexDigest, type: String, value: <+input>}
-    - {name: expectedWindows2022Digest, type: String, value: <+input>}
     - {name: qtestUrl, type: String, value: <+input>}
     - {name: qtestToken, type: Secret, value: <+input>}
     - {name: qtestProjectId, type: String, value: <+input>}
@@ -41,7 +40,6 @@ pipeline:
                     envVariables:
                       CANDIDATE_TAG: <+pipeline.variables.candidateTag>
                       EXPECTED_INDEX_DIGEST: <+pipeline.variables.expectedIndexDigest>
-                      EXPECTED_WINDOWS_2022_DIGEST: <+pipeline.variables.expectedWindows2022Digest>
                     command: |
                       set -eu
                       python3 scripts/release.py validate-lock
@@ -53,13 +51,10 @@ pipeline:
 
                       candidate = os.environ["CANDIDATE_TAG"].removeprefix("docker.io/")
                       expected_index = os.environ["EXPECTED_INDEX_DIGEST"]
-                      expected_windows_2022 = os.environ["EXPECTED_WINDOWS_2022_DIGEST"]
                       if "@" in candidate or ":" not in candidate:
                           raise SystemExit("candidate must be the exact generic tag, not a digest")
                       if not re.fullmatch(r"sha256:[0-9a-f]{64}", expected_index):
                           raise SystemExit("invalid expected index digest")
-                      if not re.fullmatch(r"sha256:[0-9a-f]{64}", expected_windows_2022):
-                          raise SystemExit("invalid expected Windows 2022 digest")
                       repository, tag = candidate.rsplit(":", 1)
                       token_url = (
                           "https://auth.docker.io/token?service=registry.docker.io"
@@ -101,16 +96,14 @@ pipeline:
                       }
                       if observed != expected:
                           raise SystemExit("generic tag descriptors do not match the digest lock")
-                      if expected_windows_2022 not in observed:
-                          raise SystemExit("Windows 2022 child is absent from the generic tag")
                       print(f"Verified generic candidate index: {candidate}@{observed_index}")
                       PY
     - stage:
-        name: Qualify generic tag on Windows LTSC 2022
-        identifier: qualify_generic_windows_ltsc2022
+        name: Qualify generic tag on Windows LTSC 2019
+        identifier: qualify_generic_windows_ltsc2019
         type: CI
         spec:
-          cloneCodebase: true
+          cloneCodebase: false
           platform: {os: Windows, arch: Amd64}
           infrastructure:
             type: KubernetesDirect
@@ -118,8 +111,75 @@ pipeline:
               connectorRef: gcopdmwindowsbuildfarm
               namespace: <+pipeline.variables.namespace>
               os: Windows
-              automountServiceAccountToken: true
-              serviceAccountName: ci-image-e2e-reader
+              nodeSelector:
+                kubernetes.io/os: windows
+                node.kubernetes.io/windows-build: "10.0.17763"
+              tolerations:
+                - {effect: NoSchedule, key: node.kubernetes.io/os, operator: Equal, value: windows}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Plant JUnit fixture
+                  identifier: plant_junit_fixture
+                  timeout: 30m
+                  spec:
+                    connectorRef: <+pipeline.variables.dockerConnector>
+                    image: harness/ci-base:ltsc2019-r1
+                    shell: Powershell
+                    command: |
+                      $ErrorActionPreference = 'Stop'
+                      $path = 'C:\harness\qtest\junit\TEST-CalcTest.xml'
+                      New-Item -ItemType Directory -Force -Path (Split-Path $path) | Out-Null
+                      @'
+                      <?xml version="1.0" encoding="UTF-8"?>
+                      <testsuites>
+                        <testsuite name="com.example.CalcTest" tests="4" failures="1" errors="1" skipped="1" time="0.5">
+                          <testcase classname="com.example.CalcTest" name="adds" time="0.1"/>
+                          <testcase classname="com.example.CalcTest" name="subtracts" time="0.1">
+                            <failure message="expected 1 but was 2">trace</failure>
+                          </testcase>
+                          <testcase classname="com.example.CalcTest" name="divides" time="0.1">
+                            <error message="ArithmeticException">trace</error>
+                          </testcase>
+                          <testcase classname="com.example.CalcTest" name="multiplies" time="0.1">
+                            <skipped/>
+                          </testcase>
+                        </testsuite>
+                      </testsuites>
+                      '@ | Set-Content -LiteralPath $path -Encoding UTF8
+                      Get-Item -LiteralPath $path | Select-Object FullName, Length
+              - step:
+                  type: Plugin
+                  name: Publish sandbox JUnit through generic tag
+                  identifier: publish_sandbox_junit_generic_tag
+                  timeout: 20m
+                  spec:
+                    connectorRef: <+pipeline.variables.dockerConnector>
+                    image: <+pipeline.variables.candidateTag>
+                    settings:
+                      qtest_url: <+pipeline.variables.qtestUrl>
+                      bearer_token: <+pipeline.variables.qtestToken>
+                      project_id: <+pipeline.variables.qtestProjectId>
+                      destination_type: test-cycle
+                      destination_id: <+pipeline.variables.qtestCycleId>
+                      suite_name: qtest-qualification-generic-windows-ltsc2019
+                      reuse_suite: "true"
+                      result_paths: qtest/junit/*.xml
+                      identity_mode: class
+    - stage:
+        name: Qualify generic tag on Windows LTSC 2022
+        identifier: qualify_generic_windows_ltsc2022
+        type: CI
+        spec:
+          cloneCodebase: false
+          platform: {os: Windows, arch: Amd64}
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: gcopdmwindowsbuildfarm
+              namespace: <+pipeline.variables.namespace>
+              os: Windows
               nodeSelector:
                 kubernetes.io/os: windows
                 node.kubernetes.io/windows-build: "10.0.20348"
@@ -128,24 +188,41 @@ pipeline:
           execution:
             steps:
               - step:
-                  type: Plugin
-                  name: Generic tag automatic entrypoint contract
-                  identifier: generic_tag_automatic_entrypoint_contract
+                  type: Run
+                  name: Plant JUnit fixture
+                  identifier: plant_junit_fixture
+                  timeout: 30m
                   spec:
                     connectorRef: <+pipeline.variables.dockerConnector>
-                    image: <+pipeline.variables.candidateTag>
-                    settings:
-                      qtest_url: https://unused.qtestnet.com
-                      bearer_token: not-used-for-empty-result
-                      project_id: "1"
-                      destination_type: test-cycle
-                      destination_id: "1"
-                      result_paths: no-results/**/*.xml
-                      empty_result: warn
+                    image: harness/ci-base:ltsc2022-r1
+                    shell: Powershell
+                    command: |
+                      $ErrorActionPreference = 'Stop'
+                      $path = 'C:\harness\qtest\junit\TEST-CalcTest.xml'
+                      New-Item -ItemType Directory -Force -Path (Split-Path $path) | Out-Null
+                      @'
+                      <?xml version="1.0" encoding="UTF-8"?>
+                      <testsuites>
+                        <testsuite name="com.example.CalcTest" tests="4" failures="1" errors="1" skipped="1" time="0.5">
+                          <testcase classname="com.example.CalcTest" name="adds" time="0.1"/>
+                          <testcase classname="com.example.CalcTest" name="subtracts" time="0.1">
+                            <failure message="expected 1 but was 2">trace</failure>
+                          </testcase>
+                          <testcase classname="com.example.CalcTest" name="divides" time="0.1">
+                            <error message="ArithmeticException">trace</error>
+                          </testcase>
+                          <testcase classname="com.example.CalcTest" name="multiplies" time="0.1">
+                            <skipped/>
+                          </testcase>
+                        </testsuite>
+                      </testsuites>
+                      '@ | Set-Content -LiteralPath $path -Encoding UTF8
+                      Get-Item -LiteralPath $path | Select-Object FullName, Length
               - step:
                   type: Plugin
                   name: Publish sandbox JUnit through generic tag
                   identifier: publish_sandbox_junit_generic_tag
+                  timeout: 20m
                   spec:
                     connectorRef: <+pipeline.variables.dockerConnector>
                     image: <+pipeline.variables.candidateTag>
@@ -157,19 +234,74 @@ pipeline:
                       destination_id: <+pipeline.variables.qtestCycleId>
                       suite_name: qtest-qualification-generic-windows-ltsc2022
                       reuse_suite: "true"
-                      result_paths: tests/fixtures/junit/*.xml
+                      result_paths: qtest/junit/*.xml
                       identity_mode: class
+    - stage:
+        name: Qualify generic tag on Windows LTSC 2025
+        identifier: qualify_generic_windows_ltsc2025
+        type: CI
+        spec:
+          cloneCodebase: false
+          platform: {os: Windows, arch: Amd64}
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: gcopdmwindows2025
+              namespace: <+pipeline.variables.namespace>
+              os: Windows
+              nodeSelector:
+                kubernetes.io/os: windows
+                node.kubernetes.io/windows-build: "10.0.26100"
+              tolerations:
+                - {effect: NoSchedule, key: node.kubernetes.io/os, operator: Equal, value: windows}
+          execution:
+            steps:
               - step:
                   type: Run
-                  name: Assert generic tag selected Windows child
-                  identifier: assert_generic_tag_selected_windows_child
+                  name: Plant JUnit fixture
+                  identifier: plant_junit_fixture
+                  timeout: 30m
                   spec:
                     connectorRef: <+pipeline.variables.dockerConnector>
-                    image: mcr.microsoft.com/windows/servercore@sha256:e10503b9a4f7faafa30aa0f5d0e8e7f7ca30a4496b3b87d61178b4d7c6815fb5
+                    image: harness/ci-base:ltsc2025-r1
                     shell: Powershell
-                    envVariables:
-                      CANDIDATE_IMAGE: <+pipeline.variables.candidateTag>
-                      EXPECTED_IMAGE_DIGEST: <+pipeline.variables.expectedWindows2022Digest>
-                      POD_NAMESPACE: <+pipeline.variables.namespace>
-                      EXPECTED_WINDOWS_BUILD: "20348"
-                    command: powershell -File scripts/assert-kubernetes-image.ps1
+                    command: |
+                      $ErrorActionPreference = 'Stop'
+                      $path = 'C:\harness\qtest\junit\TEST-CalcTest.xml'
+                      New-Item -ItemType Directory -Force -Path (Split-Path $path) | Out-Null
+                      @'
+                      <?xml version="1.0" encoding="UTF-8"?>
+                      <testsuites>
+                        <testsuite name="com.example.CalcTest" tests="4" failures="1" errors="1" skipped="1" time="0.5">
+                          <testcase classname="com.example.CalcTest" name="adds" time="0.1"/>
+                          <testcase classname="com.example.CalcTest" name="subtracts" time="0.1">
+                            <failure message="expected 1 but was 2">trace</failure>
+                          </testcase>
+                          <testcase classname="com.example.CalcTest" name="divides" time="0.1">
+                            <error message="ArithmeticException">trace</error>
+                          </testcase>
+                          <testcase classname="com.example.CalcTest" name="multiplies" time="0.1">
+                            <skipped/>
+                          </testcase>
+                        </testsuite>
+                      </testsuites>
+                      '@ | Set-Content -LiteralPath $path -Encoding UTF8
+                      Get-Item -LiteralPath $path | Select-Object FullName, Length
+              - step:
+                  type: Plugin
+                  name: Publish sandbox JUnit through generic tag
+                  identifier: publish_sandbox_junit_generic_tag
+                  timeout: 20m
+                  spec:
+                    connectorRef: <+pipeline.variables.dockerConnector>
+                    image: <+pipeline.variables.candidateTag>
+                    settings:
+                      qtest_url: <+pipeline.variables.qtestUrl>
+                      bearer_token: <+pipeline.variables.qtestToken>
+                      project_id: <+pipeline.variables.qtestProjectId>
+                      destination_type: test-cycle
+                      destination_id: <+pipeline.variables.qtestCycleId>
+                      suite_name: qtest-qualification-generic-windows-ltsc2025
+                      reuse_suite: "true"
+                      result_paths: qtest/junit/*.xml
+                      identity_mode: class

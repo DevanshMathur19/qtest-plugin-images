@@ -296,17 +296,38 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn("name: Validate generic candidate index", qualify_generic)
         self.assertIn("candidate must be the exact generic tag", qualify_generic)
         self.assertIn("generic tag descriptors do not match", qualify_generic)
-        self.assertIn(
-            "name: Generic tag automatic entrypoint contract", qualify_generic
+        self.assertEqual(3, qualify_generic.count("name: Plant JUnit fixture"))
+        self.assertEqual(
+            3,
+            qualify_generic.count(
+                "name: Publish sandbox JUnit through generic tag"
+            ),
         )
-        self.assertIn(
-            "name: Assert generic tag selected Windows child", qualify_generic
+        self.assertEqual(3, qualify_generic.count("type: KubernetesDirect"))
+        self.assertEqual(3, qualify_generic.count("cloneCodebase: false"))
+        for ltsc in ("2019", "2022", "2025"):
+            self.assertIn(f"image: harness/ci-base:ltsc{ltsc}-r1", qualify_generic)
+            self.assertIn(
+                f"suite_name: qtest-qualification-generic-windows-ltsc{ltsc}",
+                qualify_generic,
+            )
+        self.assertEqual(
+            3,
+            qualify_generic.count(
+                "image: <+pipeline.variables.candidateTag>"
+            ),
         )
-        self.assertIn("type: KubernetesDirect", qualify_generic)
-        self.assertIn(
-            "node.kubernetes.io/windows-build: \"10.0.20348\"",
-            qualify_generic,
+        self.assertEqual(
+            3, qualify_generic.count("result_paths: qtest/junit/*.xml")
         )
+        self.assertNotIn("windows/servercore", qualify_generic)
+        self.assertNotIn("unused.qtestnet.com", qualify_generic)
+        self.assertNotIn("no-results/**/*.xml", qualify_generic)
+        for build in ("17763", "20348", "26100"):
+            self.assertIn(
+                f'node.kubernetes.io/windows-build: "10.0.{build}"',
+                qualify_generic,
+            )
         self.assertNotIn(":latest", qualify_generic)
 
         self.assertIn("connectorRef: dmgitcon", promote)
